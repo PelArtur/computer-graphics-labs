@@ -12,15 +12,25 @@ bool RenderWindow::Initialize(WindowContainer* pWindowContainer, HINSTANCE hInst
 	this->window_class_wide = StringConverter::StringToWide(this->window_class);
 
 	this->RegisterWindowClass();
+
+	int centerScreenX = GetSystemMetrics(SM_CXSCREEN) / 2 - this->width / 2;
+	int centerScreenY = GetSystemMetrics(SM_CYSCREEN) / 2 - this->height / 2;
+	RECT wr;
+	wr.left = centerScreenX;
+	wr.top = centerScreenY;
+	wr.right = wr.left + this->width;
+	wr.bottom = wr.top + this->height;
+	AdjustWindowRect(&wr, WS_CAPTION | WS_MINIMIZEBOX | WS_SYSMENU, FALSE);
+
 	this->handle = CreateWindowEx(0,	                 //Extended Windows style
 		this->window_class_wide.c_str(),				 //Window class name
 		this->window_title_wide.c_str(),				 //Window Title
 		WS_CAPTION | WS_MINIMIZEBOX | WS_SYSMENU,		 //Windows style
 		//WS_OVERLAPPEDWINDOW,		 //Windows style
-		0,												 //Window X Position
-		0,												 //Window Y Position
-		this->width,									 //Window Width
-		this->height,									 //Window Height
+		wr.left,									     //Window X Position
+		wr.top,										     //Window Y Position
+		wr.right - wr.left,								 //Window Width
+		wr.bottom - wr.top,								 //Window Height
 		NULL,											 //Handle to parent of this window
 		NULL,											 //Handle to menu or child window identifier=
 		this->hInstance,								 //Handle to the instance of module to be used with this window
