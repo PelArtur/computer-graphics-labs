@@ -6,6 +6,8 @@ bool Graphics::Initialize(HWND hwnd, int width, int height)
 		return false;
 	if (!InitializeShaders())
 		return false;
+	if (!InitializeScene())
+		return false;
 	return true;
 }
 
@@ -107,6 +109,7 @@ std::wstring GetExecutablePath()
 	return { path };
 }
 
+
 std::wstring GetExecutableFolder()
 {
 	const std::wstring exePath = GetExecutablePath();
@@ -122,7 +125,11 @@ std::wstring GetExecutableFolder()
 
 bool Graphics::InitializeShaders()
 {
-	D3D11_INPUT_ELEMENT_DESC layout[] = { "POSITION", 0, DXGI_FORMAT::DXGI_FORMAT_R32G32_FLOAT, 0, 0, D3D11_INPUT_CLASSIFICATION::D3D11_INPUT_PER_VERTEX_DATA, 0 };
+	D3D11_INPUT_ELEMENT_DESC layout[] =
+	{
+		{ "POSITION", 0, DXGI_FORMAT::DXGI_FORMAT_R32G32_FLOAT, 0, 0, D3D11_INPUT_CLASSIFICATION::D3D11_INPUT_PER_VERTEX_DATA, 0 },
+		{ "COLOR", 0, DXGI_FORMAT::DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_CLASSIFICATION::D3D11_INPUT_PER_VERTEX_DATA, 0 }
+	};
 	UINT numElements = ARRAYSIZE(layout);
 
 	if (!vertexShader.Initialize(device, GetExecutableFolder() + L"vertexShader.cso", layout, numElements))
@@ -133,9 +140,56 @@ bool Graphics::InitializeShaders()
 }
 
 
+bool Graphics::InitializeScene()
+{
+	Vertex v[] =
+	{
+		Vertex(-0.5f, -0.5f, 1.0f, 0.0f, 0.0f),
+		Vertex(0.0f, 0.5f, 0.0f, 1.0f, 0.0f), 
+		Vertex(0.5f, -0.5f, 0.0f, 0.0f, 1.0f),
+	};
+
+	D3D11_BUFFER_DESC vertexBufferDesc;
+	ZeroMemory(&vertexBufferDesc, sizeof(vertexBufferDesc));
+
+	vertexBufferDesc.Usage = D3D11_USAGE_DEFAULT;
+	vertexBufferDesc.ByteWidth = sizeof(Vertex) * ARRAYSIZE(v);
+	vertexBufferDesc.BindFlags = D3D11_BIND_VERTEX_BUFFER;
+	vertexBufferDesc.CPUAccessFlags = 0;
+	vertexBufferDesc.MiscFlags = 0;
+
+	D3D11_SUBRESOURCE_DATA vertexBufferData;
+	ZeroMemory(&vertexBufferData, sizeof(vertexBufferData));
+	vertexBufferData.pSysMem = v;
+
+	HRESULT hr = this->device->CreateBuffer(&vertexBufferDesc, &vertexBufferData, this->vertexBuffer.GetAddressOf());
+	if (FAILED(hr))
+	{
+		ErrorLogger::Log(hr, "Failed to create vertex buffer.");
+		return false;
+	}
+
+	return true;
+}
+
+
 void Graphics::RenderFrame()
 {
-	float backgroundColor[] = {0.424f, 0.839f, 0.71f, 1.0f};
+	//float backgroundColor[] = { 0.424f, 0.839f, 0.71f, 1.0f };
+	float backgroundColor[] = {0.0f, 0.0f, 0.0f, 1.0f};
 	this->deviceContext->ClearRenderTargetView(this->renderTargetView.Get(), backgroundColor);
+
+	this->deviceContext->IASetInputLayout(this->vertexShader.GetInputLayout());
+	this->deviceContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY::D3D10_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+
+	this->deviceContext->VSSetShader(vertexShader.GetShader(), NULL, 0);
+	this->deviceContext->PSSetShader(pixelShader.GetShader(), NULL, 0);
+
+	UINT stride = sizeof(Vertex);
+	UINT offset = 0;
+	this->deviceContext->IASetVertexBuffers(0, 1, vertexBuffer.GetAddressOf(), &stride, &offset);
+
+	this->deviceContext->Draw(3, 0); 
+
 	this->swapchain->Present(1, NULL); //VSYNC ON -- 1, OFF -- 0
 }
