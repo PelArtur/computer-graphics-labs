@@ -2,9 +2,16 @@
 #include "AdapterReader.hpp"  
 #include "Shaders.hpp"  
 #include "Vertex.hpp"
-//for fonts 
+#include "VertexBuffer.hpp"
+#include "IndexBuffer.hpp"
+#include "ConstantBufferTypes.hpp"
+
+//fonts 
 #include <SpriteBatch.h>
 #include <SpriteFont.h>
+//textures
+#include <WICTextureLoader.h>
+
 
 class Graphics  
 {  
@@ -24,9 +31,10 @@ private:
 
     VertexShader vertexShader;  
     PixelShader pixelShader;  
-
-    Microsoft::WRL::ComPtr<ID3D11Buffer> vertexBuffer;  
-    Microsoft::WRL::ComPtr<ID3D11Buffer> vertexBuffer2;  
+    
+    VertexBuffer<Vertex> vertexBuffer;
+    IndexBuffer indicesBuffer;
+    Microsoft::WRL::ComPtr<ID3D11Buffer> constantBuffer;
 
     Microsoft::WRL::ComPtr<ID3D11DepthStencilView> depthStencilView;  
     Microsoft::WRL::ComPtr<ID3D11Texture2D> depthStencilBuffer;  
@@ -36,4 +44,7 @@ private:
 
     std::unique_ptr<DirectX::SpriteBatch> spriteBatch;
     std::unique_ptr<DirectX::SpriteFont> spriteFont;
+
+    Microsoft::WRL::ComPtr<ID3D11SamplerState> samplerState;
+    Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> myTexture;
 };

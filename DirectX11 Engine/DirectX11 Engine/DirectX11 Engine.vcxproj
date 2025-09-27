@@ -156,10 +156,12 @@
     <ClCompile Include="WindowContainer.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Graphics\ConstantBufferTypes.hpp" />
     <ClInclude Include="Graphics\AdapterReader.hpp" />
     <ClInclude Include="Engine.hpp" />
     <ClInclude Include="ErrorLogger.hpp" />
     <ClInclude Include="Graphics\Graphics.hpp" />
+    <ClInclude Include="Graphics\IndexBuffer.hpp" />
     <ClInclude Include="Keyboard\KeyboardEvent.hpp" />
     <ClInclude Include="Mouse\MouseClass.hpp" />
     <ClInclude Include="Mouse\MouseEvent.hpp" />
@@ -167,6 +169,7 @@
     <ClInclude Include="Graphics\Shaders.hpp" />
     <ClInclude Include="StringConverter.hpp" />
     <ClInclude Include="Graphics\Vertex.hpp" />
+    <ClInclude Include="Graphics\VertexBuffer.hpp" />
     <ClInclude Include="WindowContainer.hpp" />
   </ItemGroup>
   <ItemGroup>
