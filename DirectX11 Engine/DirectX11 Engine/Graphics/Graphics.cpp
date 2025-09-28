@@ -1,8 +1,16 @@
 #include "Graphics.hpp"
 
+#include <sstream>
+#include <string>
+#include <windows.h>
+
 bool Graphics::Initialize(HWND hwnd, int width, int height)
 {
-	if (!InitializeDirectX(hwnd, width, height))
+	this->windowWidth = width;
+	this->windowHeight = width;
+	this->fpsTimer.Start();
+
+	if (!InitializeDirectX(hwnd))
 		return false;
 	if (!InitializeShaders())
 		return false;
@@ -12,7 +20,7 @@ bool Graphics::Initialize(HWND hwnd, int width, int height)
 }
 
 
-bool Graphics::InitializeDirectX(HWND hwnd, int width, int height)
+bool Graphics::InitializeDirectX(HWND hwnd)
 {
 	std::vector<AdapterData> adapters = AdapterReader::GetAdapters();
 
@@ -25,8 +33,8 @@ bool Graphics::InitializeDirectX(HWND hwnd, int width, int height)
 	DXGI_SWAP_CHAIN_DESC scd;
 	ZeroMemory(&scd, sizeof(DXGI_SWAP_CHAIN_DESC));
 
-	scd.BufferDesc.Width = width;
-	scd.BufferDesc.Height = height;
+	scd.BufferDesc.Width = this->windowWidth;
+	scd.BufferDesc.Height = this->windowHeight;
 	scd.BufferDesc.RefreshRate.Numerator = 60;
 	scd.BufferDesc.RefreshRate.Denominator = 1;
 	scd.BufferDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
@@ -81,8 +89,8 @@ bool Graphics::InitializeDirectX(HWND hwnd, int width, int height)
 
 	//Describe our Depth/Stencil Buffer
 	D3D11_TEXTURE2D_DESC depthStencilDesc;
-	depthStencilDesc.Width = width;
-	depthStencilDesc.Height = height;
+	depthStencilDesc.Width = this->windowWidth;
+	depthStencilDesc.Height = this->windowHeight;
 	depthStencilDesc.MipLevels = 1;
 	depthStencilDesc.ArraySize = 1;
 	depthStencilDesc.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;
@@ -130,8 +138,8 @@ bool Graphics::InitializeDirectX(HWND hwnd, int width, int height)
 
 	viewport.TopLeftX = 0;
 	viewport.TopLeftY = 0;
-	viewport.Width = width;
-	viewport.Height = height;
+	viewport.Width = this->windowWidth;
+	viewport.Height = this->windowHeight;
 	//z-depth
 	viewport.MinDepth = 0.0f;
 	viewport.MaxDepth = 1.0f;
@@ -223,10 +231,10 @@ bool Graphics::InitializeScene()
 {
 	Vertex v[] =
 	{
-		Vertex(-0.5f, -0.5f, 1.0f, 0.0f, 1.0f),   //LD
-		Vertex(-0.5f, 0.5f, 1.0f, 0.0f, 0.0f),    //LU
-		Vertex(0.5f, 0.5f, 1.0f, 1.0f, 0.0f),     //RU
-		Vertex(0.5f, -0.5f, 1.0f, 1.0f, 1.0f),    //RD
+		Vertex(-0.5f, -0.5f, 0.0f, 0.0f, 1.0f),    //LD
+		Vertex(-0.5f,  0.5f, 0.0f, 0.0f, 0.0f),    //LU
+		Vertex( 0.5f,  0.5f, 0.0f, 1.0f, 0.0f),    //RU
+		Vertex( 0.5f, -0.5f, 0.0f, 1.0f, 1.0f),    //RD
 	};
 
 	DWORD indices[] =
@@ -267,6 +275,8 @@ bool Graphics::InitializeScene()
 		return false;
 	}
 
+	camera.SetPosition(0.0f, 0.0f, -2.0f);
+	camera.SetProjectionValues(90.0f, static_cast<float>(windowWidth) / static_cast<float>(windowHeight), 0.1f, 1000.0f);
 	return true;
 }
 
@@ -288,9 +298,14 @@ void Graphics::RenderFrame()
 
 	UINT offset = 0;
 
+	//Camera
+	XMMATRIX worldMatrix = DirectX::XMMatrixIdentity();
+	XMMATRIX viewMatrixXM = camera.GetViewMatrix();
+	XMMATRIX projectionMatrixXM = camera.GetProjectionMatrix();
+	DirectX::XMMATRIX wvp = worldMatrix * camera.GetViewMatrix() * camera.GetProjectionMatrix();
+	DirectX::XMStoreFloat4x4(&constantBuffer.data.mat, wvp);
+
 	//Update Constant Buffer
-	constantBuffer.data.xOffset = 0.0f;
-	constantBuffer.data.yOffset = 0.5f;
 	if (!constantBuffer.ApplyChanges())
 		return;
 
@@ -300,9 +315,19 @@ void Graphics::RenderFrame()
 	this->deviceContext->IASetIndexBuffer(indicesBuffer.Get(), DXGI_FORMAT_R32_UINT, 0);
 	this->deviceContext->DrawIndexed(indicesBuffer.BufferSize(), 0, 0);
 
-	//spriteBatch->Begin();
-	//spriteFont->DrawString(spriteBatch.get(), L"HELLO WORLD", DirectX::XMFLOAT2(0, 0), DirectX::Colors::White, 0.0f, DirectX::XMFLOAT2(0.0f, 0.0f), DirectX::XMFLOAT2(1.0f, 1.0f));
-	//spriteBatch->End();
+	//FPS counter
+	static int fpsCounter = 0;
+	static std::string fpsString = "FPS: 0";
+	fpsCounter += 1;
+	if (fpsTimer.GetMilisecondsElapsed() > 1000.0)
+	{
+		fpsString = "FPS: " + std::to_string(fpsCounter);
+		fpsCounter = 0;
+		fpsTimer.Restart();
+	}
+	spriteBatch->Begin();
+	spriteFont->DrawString(spriteBatch.get(), StringConverter::StringToWide(fpsString).c_str(), DirectX::XMFLOAT2(0, 0), DirectX::Colors::White, 0.0f, DirectX::XMFLOAT2(0.0f, 0.0f), DirectX::XMFLOAT2(1.0f, 1.0f));
+	spriteBatch->End();
 
-	this->swapchain->Present(1, NULL); //VSYNC ON -- 1, OFF -- 0
+	this->swapchain->Present(0, NULL); //VSYNC ON -- 1, OFF -- 0
 }

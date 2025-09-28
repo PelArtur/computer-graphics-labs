@@ -1,5 +1,6 @@
 #pragma once
 #include "WindowContainer.hpp"
+#include "Timer.hpp"
 
 
 class Engine : WindowContainer
@@ -9,4 +10,7 @@ public:
 	bool ProcessMessages();
 	void Update();
 	void RenderFrame();
+
+private:
+	Timer timer;
 };

@@ -133,6 +133,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>NDEBUG;_WINDOWS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
+      <AdditionalIncludeDirectories>D:\UCU Forth Year\Graphics\DirectXTK-main\Inc;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -143,6 +144,7 @@
     <ClCompile Include="Graphics\AdapterReader.cpp" />
     <ClCompile Include="Engine.cpp" />
     <ClCompile Include="ErrorLogger.cpp" />
+    <ClCompile Include="Graphics\Camera.cpp" />
     <ClCompile Include="Graphics\Graphics.cpp" />
     <ClCompile Include="Keyboard\KeyboardClass.cpp" />
     <ClCompile Include="Keyboard\KeyboardClass.hpp" />
@@ -153,9 +155,11 @@
     <ClCompile Include="Graphics\Shaders.cpp" />
     <ClCompile Include="Source.cpp" />
     <ClCompile Include="StringConverter.cpp" />
+    <ClCompile Include="Timer.cpp" />
     <ClCompile Include="WindowContainer.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Graphics\Camera.hpp" />
     <ClInclude Include="Graphics\ConstantBuffer.hpp" />
     <ClInclude Include="Graphics\ConstantBufferTypes.hpp" />
     <ClInclude Include="Graphics\AdapterReader.hpp" />
@@ -171,6 +175,7 @@
     <ClInclude Include="StringConverter.hpp" />
     <ClInclude Include="Graphics\Vertex.hpp" />
     <ClInclude Include="Graphics\VertexBuffer.hpp" />
+    <ClInclude Include="Timer.hpp" />
     <ClInclude Include="WindowContainer.hpp" />
   </ItemGroup>
   <ItemGroup>
