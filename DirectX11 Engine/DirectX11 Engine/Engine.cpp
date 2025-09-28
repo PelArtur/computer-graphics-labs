@@ -69,7 +69,7 @@ void Engine::Update()
 	{
 		this->gfx.camera.AdjustPosition(0.0f, cameraSpeed * dt, 0.0f);
 	}
-	if (keyboard.KeyIsPressed(VK_CONTROL))
+	if (keyboard.KeyIsPressed(VK_SHIFT))
 	{
 		this->gfx.camera.AdjustPosition(0.0f, -cameraSpeed * dt, 0.0f);
 	}
