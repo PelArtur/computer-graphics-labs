@@ -4,7 +4,7 @@
 #include "Vertex.hpp"
 #include "VertexBuffer.hpp"
 #include "IndexBuffer.hpp"
-#include "ConstantBufferTypes.hpp"
+#include "ConstantBuffer.hpp"
 
 //fonts 
 #include <SpriteBatch.h>
@@ -34,7 +34,7 @@ private:
     
     VertexBuffer<Vertex> vertexBuffer;
     IndexBuffer indicesBuffer;
-    Microsoft::WRL::ComPtr<ID3D11Buffer> constantBuffer;
+    ConstantBuffer<CB_VS_vertexShader> constantBuffer;
 
     Microsoft::WRL::ComPtr<ID3D11DepthStencilView> depthStencilView;  
     Microsoft::WRL::ComPtr<ID3D11Texture2D> depthStencilBuffer;  

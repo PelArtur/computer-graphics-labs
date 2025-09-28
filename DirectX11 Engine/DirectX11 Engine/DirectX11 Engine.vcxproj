@@ -156,6 +156,7 @@
     <ClCompile Include="WindowContainer.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Graphics\ConstantBuffer.hpp" />
     <ClInclude Include="Graphics\ConstantBufferTypes.hpp" />
     <ClInclude Include="Graphics\AdapterReader.hpp" />
     <ClInclude Include="Engine.hpp" />
