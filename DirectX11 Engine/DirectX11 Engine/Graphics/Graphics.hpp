@@ -33,7 +33,7 @@ private:
     Microsoft::WRL::ComPtr<ID3D11RenderTargetView> renderTargetView;  
 
     VertexShader vertexShader;  
-    PixelShader pixelShader;  
+    PixelShader pixelShader;
     
     VertexBuffer<Vertex> vertexBuffer;
     IndexBuffer indicesBuffer;
@@ -49,7 +49,8 @@ private:
     std::unique_ptr<DirectX::SpriteFont> spriteFont;
 
     Microsoft::WRL::ComPtr<ID3D11SamplerState> samplerState;
-    Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> myTexture;
+    Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> myTexture1;
+    Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> myTexture2;
 
     int windowWidth = 0;
     int windowHeight = 0;

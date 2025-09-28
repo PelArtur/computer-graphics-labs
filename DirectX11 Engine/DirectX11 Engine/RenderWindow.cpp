@@ -25,8 +25,8 @@ bool RenderWindow::Initialize(WindowContainer* pWindowContainer, HINSTANCE hInst
 	this->handle = CreateWindowEx(0,	                 //Extended Windows style
 		this->window_class_wide.c_str(),				 //Window class name
 		this->window_title_wide.c_str(),				 //Window Title
-		WS_CAPTION | WS_MINIMIZEBOX | WS_SYSMENU,		 //Windows style
-		//WS_OVERLAPPEDWINDOW,		 //Windows style
+		//WS_CAPTION | WS_MINIMIZEBOX | WS_SYSMENU,		 //Windows style
+		WS_OVERLAPPEDWINDOW,		 //Windows style
 		wr.left,									     //Window X Position
 		wr.top,										     //Window Y Position
 		wr.right - wr.left,								 //Window Width

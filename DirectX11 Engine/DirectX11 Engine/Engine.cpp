@@ -67,11 +67,11 @@ void Engine::Update()
 	}
 	if (keyboard.KeyIsPressed(VK_SPACE))
 	{
-		this->gfx.camera.AdjustPosition(0.0f, cameraSpeed, 0.0f);
+		this->gfx.camera.AdjustPosition(0.0f, cameraSpeed * dt, 0.0f);
 	}
 	if (keyboard.KeyIsPressed(VK_CONTROL))
 	{
-		this->gfx.camera.AdjustPosition(0.0f, -cameraSpeed, 0.0f);
+		this->gfx.camera.AdjustPosition(0.0f, -cameraSpeed * dt, 0.0f);
 	}
 }
 

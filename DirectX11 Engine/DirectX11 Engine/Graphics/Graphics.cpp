@@ -231,16 +231,58 @@ bool Graphics::InitializeScene()
 {
 	Vertex v[] =
 	{
+		//Front
 		Vertex(-0.5f, -0.5f, 0.0f, 0.0f, 1.0f),    //LD
 		Vertex(-0.5f,  0.5f, 0.0f, 0.0f, 0.0f),    //LU
 		Vertex( 0.5f,  0.5f, 0.0f, 1.0f, 0.0f),    //RU
 		Vertex( 0.5f, -0.5f, 0.0f, 1.0f, 1.0f),    //RD
+
+		//Right
+		Vertex( 0.5f, -0.5f, 0.0f, 0.0f, 1.0f),    //LD
+		Vertex( 0.5f,  0.5f, 0.0f, 0.0f, 0.0f),    //LU
+		Vertex( 0.5f,  0.5f, 1.0f, 1.0f, 0.0f),    //RU
+		Vertex( 0.5f, -0.5f, 1.0f, 1.0f, 1.0f),    //RD
+
+		//Back
+		Vertex( 0.5f, -0.5f, 1.0f, 0.0f, 1.0f),    //LD
+		Vertex( 0.5f,  0.5f, 1.0f, 0.0f, 0.0f),    //LU
+		Vertex(-0.5f, -0.5f, 1.0f, 1.0f, 1.0f),    //RD
+		Vertex(-0.5f,  0.5f, 1.0f, 1.0f, 0.0f),    //RU
+
+		//Left
+		Vertex(-0.5f, -0.5f, 1.0f, 0.0f, 1.0f),    //LD
+		Vertex(-0.5f,  0.5f, 1.0f, 0.0f, 0.0f),    //LU
+		Vertex(-0.5f, -0.5f, 0.0f, 1.0f, 1.0f),    //RD
+		Vertex(-0.5f,  0.5f, 0.0f, 1.0f, 0.0f),    //RU
+
+		//Up
+		Vertex(-0.5f,  0.5f, 0.0f, 0.0f, 1.0f),    //LD
+		Vertex(-0.5f,  0.5f, 1.0f, 0.0f, 0.0f),    //LU
+		Vertex( 0.5f,  0.5f, 1.0f, 1.0f, 0.0f),    //RU
+		Vertex( 0.5f,  0.5f, 0.0f, 1.0f, 1.0f),    //RD
+
+		//DOWN
+		Vertex(-0.5f, -0.5f, 1.0f, 0.0f, 1.0f),    //LD
+		Vertex(-0.5f, -0.5f, 0.0f, 0.0f, 0.0f),    //LU
+		Vertex( 0.5f, -0.5f, 1.0f, 1.0f, 1.0f),    //RD
+		Vertex( 0.5f, -0.5f, 0.0f, 1.0f, 0.0f),    //RU
 	};
 
 	DWORD indices[] =
 	{
-		0, 1, 2,
-		0, 2, 3
+		0, 1, 2,     //Front1
+		4, 5, 6,     //Right1
+		8, 9, 10,    //Back1
+		12, 13, 14,  //Left1
+		16, 17, 18,  //Up1
+		20, 21, 22,  //Bottom1
+		
+		0, 2, 3,     //Front2
+		4, 6, 7,     //Right2
+		9, 11, 10,   //Back2
+		13, 15, 14,  //Left2
+		16, 18, 19,  //Up2
+		21, 23, 22,  //Bottom2
 	};
 
 	//Vertex buffer
@@ -260,7 +302,14 @@ bool Graphics::InitializeScene()
 	}
 
 	//Texture
-	hr = DirectX::CreateWICTextureFromFile(this->device.Get(), L"Data/Textures/profile1.jpg", nullptr, myTexture.GetAddressOf());
+	hr = DirectX::CreateWICTextureFromFile(this->device.Get(), L"Data/Textures/profile1.jpg", nullptr, myTexture1.GetAddressOf());
+	if (FAILED(hr))
+	{
+		ErrorLogger::Log(hr, "Failed to create wic texture from file.");
+		return false;
+	}
+
+	hr = DirectX::CreateWICTextureFromFile(this->device.Get(), L"Data/Textures/profile2.jpg", nullptr, myTexture2.GetAddressOf());
 	if (FAILED(hr))
 	{
 		ErrorLogger::Log(hr, "Failed to create wic texture from file.");
@@ -309,11 +358,21 @@ void Graphics::RenderFrame()
 	if (!constantBuffer.ApplyChanges())
 		return;
 
+	//this->deviceContext->VSSetConstantBuffers(0, 1, this->constantBuffer.GetAddressOf());
+	//this->deviceContext->PSSetShaderResources(0, 1, this->myTexture1.GetAddressOf());
+	//this->deviceContext->IASetVertexBuffers(0, 1, vertexBuffer.GetAddressOf(), vertexBuffer.StridePtr(), &offset);
+	//this->deviceContext->IASetIndexBuffer(indicesBuffer.Get(), DXGI_FORMAT_R32_UINT, 0);
+	//this->deviceContext->DrawIndexed(indicesBuffer.BufferSize(), 0, 0);
+
 	this->deviceContext->VSSetConstantBuffers(0, 1, this->constantBuffer.GetAddressOf());
-	this->deviceContext->PSSetShaderResources(0, 1, this->myTexture.GetAddressOf());
 	this->deviceContext->IASetVertexBuffers(0, 1, vertexBuffer.GetAddressOf(), vertexBuffer.StridePtr(), &offset);
 	this->deviceContext->IASetIndexBuffer(indicesBuffer.Get(), DXGI_FORMAT_R32_UINT, 0);
-	this->deviceContext->DrawIndexed(indicesBuffer.BufferSize(), 0, 0);
+
+	this->deviceContext->PSSetShaderResources(0, 1, this->myTexture1.GetAddressOf());
+	this->deviceContext->DrawIndexed(indicesBuffer.BufferSize() / 2, 0, 0);
+
+	this->deviceContext->PSSetShaderResources(0, 1, this->myTexture2.GetAddressOf());
+	this->deviceContext->DrawIndexed(indicesBuffer.BufferSize() / 2, indicesBuffer.BufferSize() / 2, 0);
 
 	//FPS counter
 	static int fpsCounter = 0;

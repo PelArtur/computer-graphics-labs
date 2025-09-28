@@ -121,6 +121,10 @@ void Camera::SetRotation(const XMVECTOR& rot)
 
 void Camera::SetRotation(float x, float y, float z)
 {
+	if (x < -XM_PIDIV2)
+		x = -XM_PIDIV2;
+	if (x > XM_PIDIV2)
+		x = XM_PIDIV2;
 	this->rot = XMFLOAT3(x, y, z);
 	this->rotVector = XMLoadFloat3(&this->rot);
 	this->UpdateViewMatrix();
@@ -138,6 +142,10 @@ void Camera::AdjustRotation(const XMVECTOR& rot)
 void Camera::AdjustRotation(float x, float y, float z)
 {
 	this->rot.x += x;
+	if (this->rot.x < -XM_PIDIV2)
+		this->rot.x = -XM_PIDIV2;
+	if (this->rot.x > XM_PIDIV2)
+		this->rot.x = XM_PIDIV2;
 	this->rot.y += y;
 	this->rot.z += z;
 	this->rotVector = XMLoadFloat3(&this->rot);
