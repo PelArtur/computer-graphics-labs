@@ -7,6 +7,9 @@
 #include "ConstantBuffer.hpp"
 #include "Camera.hpp"
 #include "../Timer.hpp"
+#include "ImGui/imgui.h"
+#include "ImGui/imgui_impl_win32.h"
+#include "ImGui/imgui_impl_dx11.h"
 
 //fonts 
 #include <SpriteBatch.h>

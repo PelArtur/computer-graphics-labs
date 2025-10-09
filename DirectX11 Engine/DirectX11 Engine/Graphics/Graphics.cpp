@@ -7,7 +7,7 @@
 bool Graphics::Initialize(HWND hwnd, int width, int height)
 {
 	this->windowWidth = width;
-	this->windowHeight = width;
+	this->windowHeight = height;
 	this->fpsTimer.Start();
 	this->shadersTimer.Start();
 
@@ -17,6 +17,14 @@ bool Graphics::Initialize(HWND hwnd, int width, int height)
 		return false;
 	if (!InitializeScene())
 		return false;
+
+	IMGUI_CHECKVERSION();
+	ImGui::CreateContext();
+	ImGuiIO& io = ImGui::GetIO();
+	ImGui_ImplWin32_Init(hwnd);
+	ImGui_ImplDX11_Init(this->device.Get(), this->deviceContext.Get());
+	ImGui::StyleColorsDark();
+
 	return true;
 }
 
@@ -613,5 +621,13 @@ void Graphics::RenderFrame()
 	spriteFont->DrawString(spriteBatch.get(), StringConverter::StringToWide(fpsString).c_str(), DirectX::XMFLOAT2(0, 0), DirectX::Colors::White, 0.0f, DirectX::XMFLOAT2(0.0f, 0.0f), DirectX::XMFLOAT2(1.0f, 1.0f));
 	spriteBatch->End();
 
+	ImGui_ImplDX11_NewFrame();
+	ImGui_ImplWin32_NewFrame();
+	ImGui::NewFrame();
+	
+	ImGui::Begin("Test");
+	ImGui::End();
+	ImGui::Render();
+	ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());
 	this->swapchain->Present(0, NULL); //VSYNC ON -- 1, OFF -- 0
 }
