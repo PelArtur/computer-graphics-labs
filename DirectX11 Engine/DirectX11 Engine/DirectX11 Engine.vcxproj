@@ -154,7 +154,7 @@
     <ClCompile Include="Graphics\ImGui\imgui_tables.cpp" />
     <ClCompile Include="Graphics\ImGui\imgui_widgets.cpp" />
     <ClCompile Include="Keyboard\KeyboardClass.cpp" />
-    <ClCompile Include="Keyboard\KeyboardClass.hpp" />
+    <!-- <ClCompile Include="Keyboard\KeyboardClass.hpp" /> -->
     <ClCompile Include="Keyboard\KeyboardEvent.cpp" />
     <ClCompile Include="Mouse\MouseClass.cpp" />
     <ClCompile Include="Mouse\MouseEvent.cpp" />
@@ -183,6 +183,7 @@
     <ClInclude Include="Graphics\ImGui\imstb_truetype.h" />
     <ClInclude Include="Graphics\IndexBuffer.hpp" />
     <ClInclude Include="Keyboard\KeyboardEvent.hpp" />
+    <ClInclude Include="Keyboard\KeyboardClass.hpp" />
     <ClInclude Include="Mouse\MouseClass.hpp" />
     <ClInclude Include="Mouse\MouseEvent.hpp" />
     <ClInclude Include="RenderWindow.hpp" />

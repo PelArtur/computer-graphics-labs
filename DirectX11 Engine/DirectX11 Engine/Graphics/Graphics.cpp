@@ -4,7 +4,7 @@
 #include <string>
 #include <windows.h>
 
-bool Graphics::Initialize(HWND hwnd, int width, int height)
+bool Graphics::Initialize(HWND hwnd, int width, int height) 
 {
 	this->windowWidth = width;
 	this->windowHeight = height;
@@ -165,6 +165,31 @@ bool Graphics::InitializeDirectX(HWND hwnd)
 	if (FAILED(hr))
 	{
 		ErrorLogger::Log(hr, "Failed to create rasterizer state.");
+		return false;
+	}
+
+	//Create Blend State
+	D3D11_BLEND_DESC blendDesc;
+	ZeroMemory(&blendDesc, sizeof(blendDesc));
+
+	D3D11_RENDER_TARGET_BLEND_DESC rtbd;
+	ZeroMemory(&rtbd, sizeof(rtbd));
+
+	rtbd.BlendEnable = true;
+	rtbd.SrcBlend = D3D11_BLEND::D3D11_BLEND_SRC_ALPHA;
+	rtbd.DestBlend = D3D11_BLEND::D3D11_BLEND_INV_SRC_ALPHA;
+	rtbd.BlendOp = D3D11_BLEND_OP::D3D11_BLEND_OP_ADD;
+	rtbd.SrcBlendAlpha = D3D11_BLEND::D3D11_BLEND_ONE;
+	rtbd.DestBlendAlpha = D3D11_BLEND::D3D11_BLEND_ZERO;
+	rtbd.BlendOpAlpha = D3D11_BLEND_OP::D3D11_BLEND_OP_ADD;
+	rtbd.RenderTargetWriteMask = D3D11_COLOR_WRITE_ENABLE::D3D11_COLOR_WRITE_ENABLE_ALL;
+
+	blendDesc.RenderTarget[0] = rtbd;
+
+	hr = this->device->CreateBlendState(&blendDesc, this->blendState.GetAddressOf());
+	if (FAILED(hr))
+	{
+		ErrorLogger::Log(hr, "Failed to create blend state.");
 		return false;
 	}
 
@@ -398,6 +423,45 @@ bool Graphics::InitializeScene()
 		Vertex(-0.5f, 1.5f, 0.0f, 0.0f, 0.0f),    //LU
 		Vertex(0.5f, 1.5f, 1.0f, 1.0f, 1.0f),    //RD
 		Vertex(0.5f, 1.5f, 0.0f, 1.0f, 0.0f),    //RU
+
+		// --- CUBE 5 (New Cube: Indices 96-119) ---
+		// Offset Cube 4 by +2.0 units on the Y-axis.
+
+		// Front 
+		Vertex(-5.0f, -5.0f, 5.0f, 0.0f, 1.0f),   //LD
+		Vertex(-5.0f, 5.0f, 5.0f, 0.0f, 0.0f),   //LU
+		Vertex(5.0f, 5.0f, 5.0f, 1.0f, 0.0f),   //RU
+		Vertex(5.0f, -5.0f, 5.0f, 1.0f, 1.0f),   //RD
+
+		// Right
+		Vertex(5.0f, -5.0f, 5.0f, 0.0f, 1.0f),   //LD
+		Vertex(5.0f, 5.0f, 5.0f, 0.0f, 0.0f),   //LU
+		Vertex(5.0f, 5.0f, 15.0f, 1.0f, 0.0f),  //RU
+		Vertex(5.0f, -5.0f, 15.0f, 1.0f, 1.0f),  //RD
+
+		// Back
+		Vertex(5.0f, -5.0f, 15.0f, 0.0f, 1.0f),  //LD
+		Vertex(5.0f, 5.0f, 15.0f, 0.0f, 0.0f),  //LU
+		Vertex(-5.0f, -5.0f, 15.0f, 1.0f, 1.0f),  //RD
+		Vertex(-5.0f, 5.0f, 15.0f, 1.0f, 0.0f),  //RU
+
+		// Left
+		Vertex(-5.0f, -5.0f, 15.0f, 0.0f, 1.0f),  //LD
+		Vertex(-5.0f, 5.0f, 15.0f, 0.0f, 0.0f),  //LU
+		Vertex(-5.0f, -5.0f, 5.0f, 1.0f, 1.0f),   //RD
+		Vertex(-5.0f, 5.0f, 5.0f, 1.0f, 0.0f),   //RU
+
+		// Up
+		Vertex(-5.0f, 5.0f, 5.0f, 0.0f, 1.0f),   //LD
+		Vertex(-5.0f, 5.0f, 15.0f, 0.0f, 0.0f),  //LU
+		Vertex(5.0f, 5.0f, 15.0f, 1.0f, 0.0f),  //RU
+		Vertex(5.0f, 5.0f, 5.0f, 1.0f, 1.0f),   //RD
+
+		// Down
+		Vertex(-5.0f, -5.0f, 15.0f, 0.0f, 1.0f),  //LD
+		Vertex(-5.0f, -5.0f, 5.0f, 0.0f, 0.0f),   //LU
+		Vertex(5.0f, -5.0f, 15.0f, 1.0f, 1.0f),  //RD
+		Vertex(5.0f, -5.0f, 5.0f, 1.0f, 0.0f),   //RU
 	};
 
 	DWORD indices[] =
@@ -472,6 +536,25 @@ bool Graphics::InitializeScene()
 		// Bottom (92, 93, 94, 95)
 		92, 93, 94,
 		93, 95, 94,
+		
+		// Front (96, 97, 98, 99)
+		96, 97, 98,
+		96, 98, 99,
+		// Right (100, 101, 102, 103)
+		100, 101, 102,
+		100, 102, 103,
+		// Back (104, 105, 106, 107)
+		104, 105, 106,
+		105, 107, 106,
+		// Left (108, 109, 110, 111)
+		108, 109, 110,
+		109, 111, 110,
+		// Up (112, 113, 114, 115)
+		112, 113, 114,
+		112, 114, 115,
+		// Bottom (116, 117, 118, 119)
+		116, 117, 118,
+		117, 119, 118,
 	};
 
 	//Vertex buffer
@@ -498,8 +581,22 @@ bool Graphics::InitializeScene()
 		return false;
 	}
 
+	hr = DirectX::CreateWICTextureFromFile(this->device.Get(), L"Data/Textures/profile2.jpg", nullptr, myTexture2.GetAddressOf());
+	if (FAILED(hr))
+	{
+		ErrorLogger::Log(hr, "Failed to create wic texture from file.");
+		return false;
+	}
+
 	//Constant buffers
-	hr = this->constantBuffer.Initialize(this->device.Get(), this->deviceContext.Get());
+	hr = this->cb_vertexShader.Initialize(this->device.Get(), this->deviceContext.Get());
+	if (FAILED(hr))
+	{
+		ErrorLogger::Log(hr, "Failed to initialize constant buffer.");
+		return false;
+	}
+
+	hr = this->cb_pixelShader.Initialize(this->device.Get(), this->deviceContext.Get());
 	if (FAILED(hr))
 	{
 		ErrorLogger::Log(hr, "Failed to initialize constant buffer.");
@@ -551,24 +648,27 @@ void Graphics::RenderFrame()
 	this->deviceContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY::D3D10_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 	this->deviceContext->RSSetState(this->rasterizerState.Get());
 	this->deviceContext->OMSetDepthStencilState(this->depthStencilState.Get(), 0);
+	this->deviceContext->OMSetBlendState(this->blendState.Get(), NULL, 0xFFFFFFFF);
 	this->deviceContext->PSSetSamplers(0, 1, this->samplerState.GetAddressOf());
 	this->deviceContext->VSSetShader(vertexShader.GetShader(), NULL, 0);
-	//this->deviceContext->PSSetShader(pixelShader.GetShader(), NULL, 0);
+	this->deviceContext->PSSetShader(pixelShader.GetShader(), NULL, 0);
 
 	UINT offset = 0;
 
+	static float translationOffset1[3] = { 0, 0, 0 };
+	static float alpha1 = 1.0f;
 	//Camera
-	XMMATRIX worldMatrix = DirectX::XMMatrixIdentity();
+	XMMATRIX worldMatrix = XMMatrixTranslation(translationOffset1[0], translationOffset1[1], translationOffset1[2]);
 	XMMATRIX viewMatrixXM = camera.GetViewMatrix();
 	XMMATRIX projectionMatrixXM = camera.GetProjectionMatrix();
 	DirectX::XMMATRIX wvp = worldMatrix * camera.GetViewMatrix() * camera.GetProjectionMatrix();
-	DirectX::XMStoreFloat4x4(&constantBuffer.data.mat, wvp);
+	DirectX::XMStoreFloat4x4(&cb_vertexShader.data.mat, wvp);
 
 	//Update Constant Buffer
-	if (!constantBuffer.ApplyChanges())
+	if (!cb_vertexShader.ApplyChanges())
 		return;
 
-	//this->deviceContext->VSSetConstantBuffers(0, 1, this->constantBuffer.GetAddressOf());
+	//this->deviceContext->VSSetConstantBuffers(0, 1, this->cb_vertexShader.GetAddressOf());
 	//this->deviceContext->PSSetShaderResources(0, 1, this->myTexture.GetAddressOf());
 	//this->deviceContext->IASetVertexBuffers(0, 1, vertexBuffer.GetAddressOf(), vertexBuffer.StridePtr(), &offset);
 	//this->deviceContext->IASetIndexBuffer(indicesBuffer.Get(), DXGI_FORMAT_R32_UINT, 0);
@@ -583,29 +683,61 @@ void Graphics::RenderFrame()
 	if (!warpConstantBuffer.ApplyChanges())
 		return;
 
+	this->cb_pixelShader.data.alpha = alpha1;
+	if (!cb_pixelShader.ApplyChanges())
+		return;
+
 	this->deviceContext->IASetVertexBuffers(0, 1, vertexBuffer.GetAddressOf(), vertexBuffer.StridePtr(), &offset);
 	this->deviceContext->IASetIndexBuffer(indicesBuffer.Get(), DXGI_FORMAT_R32_UINT, 0);
-	this->deviceContext->VSSetConstantBuffers(0, 1, this->constantBuffer.GetAddressOf());
+	this->deviceContext->VSSetConstantBuffers(0, 1, this->cb_vertexShader.GetAddressOf());
+	this->deviceContext->PSSetConstantBuffers(0, 1, this->cb_pixelShader.GetAddressOf());
 
-	UINT boxVertices = indicesBuffer.BufferSize() / 4;
+	UINT indexBufferSize4 = indicesBuffer.BufferSize() / 5 * 4;
+	UINT boxVertices = indexBufferSize4 / 4;
 
 	//PixelShader1
 	this->deviceContext->PSSetShader(pixelShader.GetShader(), NULL, 0);
 	this->deviceContext->PSSetShaderResources(0, 1, this->myTexture.GetAddressOf());
-	this->deviceContext->DrawIndexed(boxVertices, indicesBuffer.BufferSize() / 2 + boxVertices, 0);
+	this->deviceContext->DrawIndexed(boxVertices, indexBufferSize4 / 2 + boxVertices, 0);
 
-	//PixelShader2
+	////PixelShader2
 	this->deviceContext->PSSetShader(voronoiseShader.GetShader(), NULL, 0);
 	this->deviceContext->PSSetConstantBuffers(1, 1, this->psConstantBuffer.GetAddressOf());
 	this->deviceContext->DrawIndexed(boxVertices, 0, 0);                                //first box
-	this->deviceContext->DrawIndexed(boxVertices, indicesBuffer.BufferSize() / 8, 0);  //first box
-	this->deviceContext->DrawIndexed(boxVertices, indicesBuffer.BufferSize() / 2, 0);  //third box
+	this->deviceContext->DrawIndexed(boxVertices, indexBufferSize4 / 8, 0);  //first box
+	this->deviceContext->DrawIndexed(boxVertices, indexBufferSize4 / 2, 0);  //third box
 
-	//PixelShader3
+	////PixelShader3
 	this->deviceContext->PSSetShader(warpShader.GetShader(), NULL, 0);
 	this->deviceContext->PSSetConstantBuffers(2, 1, this->psConstantBuffer.GetAddressOf());
-	this->deviceContext->DrawIndexed(boxVertices, indicesBuffer.BufferSize() / 8, 0);  //first box
-	this->deviceContext->DrawIndexed(boxVertices, indicesBuffer.BufferSize() / 4, 0);   //second box
+	this->deviceContext->DrawIndexed(boxVertices, indexBufferSize4 / 8, 0);  //first box
+	this->deviceContext->DrawIndexed(boxVertices, indexBufferSize4 / 4, 0);   //second box
+
+	static float translationOffset2[3] = { 0, 0, 0 };
+	static float alpha2 = 1.0f;
+	{ //back vox/
+		worldMatrix = XMMatrixTranslation(translationOffset2[0], translationOffset2[1], translationOffset2[2]);
+		viewMatrixXM = camera.GetViewMatrix();
+		projectionMatrixXM = camera.GetProjectionMatrix();
+		wvp = worldMatrix * camera.GetViewMatrix() * camera.GetProjectionMatrix();
+		DirectX::XMStoreFloat4x4(&cb_vertexShader.data.mat, wvp);
+
+		if (!cb_vertexShader.ApplyChanges())
+			return;
+
+		this->cb_pixelShader.data.alpha = alpha2;
+		if (!cb_pixelShader.ApplyChanges())
+			return;
+
+		this->deviceContext->IASetVertexBuffers(0, 1, vertexBuffer.GetAddressOf(), vertexBuffer.StridePtr(), &offset);
+		this->deviceContext->IASetIndexBuffer(indicesBuffer.Get(), DXGI_FORMAT_R32_UINT, 0);
+		this->deviceContext->VSSetConstantBuffers(0, 1, this->cb_vertexShader.GetAddressOf());
+		this->deviceContext->PSSetConstantBuffers(0, 1, this->cb_pixelShader.GetAddressOf());
+		this->deviceContext->PSSetShader(pixelShader.GetShader(), NULL, 0);
+		this->deviceContext->PSSetShaderResources(0, 1, this->myTexture2.GetAddressOf());
+		this->deviceContext->DrawIndexed(boxVertices, indexBufferSize4, 0);
+	}
+
 
 	//FPS counter
 	static int fpsCounter = 0;
@@ -626,6 +758,10 @@ void Graphics::RenderFrame()
 	ImGui::NewFrame();
 	
 	ImGui::Begin("Test");
+	ImGui::DragFloat3("coords1", translationOffset1, 0.1f, -10.0f, 10.0f);
+	ImGui::DragFloat("alpha1", &alpha1, 0.01f, 0.0f, 1.0f);
+	ImGui::DragFloat3("coords2", translationOffset2, 0.1f, -10.0f, 10.0f);
+	ImGui::DragFloat("alpha2", &alpha2, 0.01f, 0.0f, 1.0f);
 	ImGui::End();
 	ImGui::Render();
 	ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());

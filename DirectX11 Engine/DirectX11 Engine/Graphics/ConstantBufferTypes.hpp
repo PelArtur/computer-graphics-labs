@@ -8,6 +8,12 @@ struct CB_VS_vertexShader
 };
 
 
+struct CB_PS_pixelShader
+{
+	float alpha = 1.0f;
+};
+
+
 struct Voronoise_pixelShader
 {
 	DirectX::XMFLOAT4 iResolution;

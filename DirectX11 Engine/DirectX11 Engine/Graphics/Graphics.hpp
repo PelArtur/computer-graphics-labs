@@ -44,9 +44,11 @@ private:
     VertexBuffer<Vertex> vertexBuffer;
     IndexBuffer indicesBuffer;
 
-    ConstantBuffer<CB_VS_vertexShader> constantBuffer;
+    ConstantBuffer<CB_VS_vertexShader> cb_vertexShader;
+    ConstantBuffer<CB_PS_pixelShader> cb_pixelShader;
     ConstantBuffer<Voronoise_pixelShader> psConstantBuffer;
     ConstantBuffer<Warp_pixelShader> warpConstantBuffer;
+
     DirectX::XMFLOAT4 mouseData = { 0.0f, 0.0f, 0.0f, 0.0f };
 
     Microsoft::WRL::ComPtr<ID3D11DepthStencilView> depthStencilView;  
@@ -54,12 +56,14 @@ private:
     Microsoft::WRL::ComPtr<ID3D11DepthStencilState> depthStencilState;  
 
     Microsoft::WRL::ComPtr<ID3D11RasterizerState> rasterizerState;
+    Microsoft::WRL::ComPtr<ID3D11BlendState> blendState;
 
     std::unique_ptr<DirectX::SpriteBatch> spriteBatch;
     std::unique_ptr<DirectX::SpriteFont> spriteFont;
 
     Microsoft::WRL::ComPtr<ID3D11SamplerState> samplerState;
     Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> myTexture;
+    Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> myTexture2;
 
     int windowWidth = 0;
     int windowHeight = 0;
