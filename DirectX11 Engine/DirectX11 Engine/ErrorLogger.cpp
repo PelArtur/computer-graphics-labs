@@ -14,7 +14,7 @@ void ErrorLogger::Log(std::string message)
 void ErrorLogger::Log(HRESULT hr, std::string message)
 {
 	_com_error error(hr);  //error object for retrieving error meassage
-	std::wstring error_message = L"Error: " + StringConverter::StringToWide(message) + L"\n" + error.ErrorMessage();
+	std::wstring error_message = L"Error: " + StringHelper::StringToWide(message) + L"\n" + error.ErrorMessage();
 	// MessageBoxW -- messages are wide strings(16-bit)
 	MessageBoxW(NULL, error_message.c_str(), L"Error", MB_ICONERROR);
 }
@@ -26,4 +26,11 @@ void ErrorLogger::Log(HRESULT hr, std::wstring message)
 	std::wstring error_message = L"Error: " + message + L"\n" + error.ErrorMessage();
 	// MessageBoxW -- messages are wide strings(16-bit)
 	MessageBoxW(NULL, error_message.c_str(), L"Error", MB_ICONERROR);
+}
+
+
+void ErrorLogger::Log(COMException& exception)
+{
+	std::wstring error_message = exception.what();
+	MessageBox(NULL, error_message.c_str(), L"Error", MB_ICONERROR);
 }

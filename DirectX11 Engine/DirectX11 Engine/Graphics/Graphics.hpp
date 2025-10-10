@@ -1,21 +1,19 @@
 #pragma once  
 #include "AdapterReader.hpp"  
 #include "Shaders.hpp"  
-#include "Vertex.hpp"
-#include "VertexBuffer.hpp"
-#include "IndexBuffer.hpp"
-#include "ConstantBuffer.hpp"
 #include "Camera.hpp"
+#include "RenderableGameObject.hpp"
 #include "../Timer.hpp"
-#include "ImGui/imgui.h"
-#include "ImGui/imgui_impl_win32.h"
-#include "ImGui/imgui_impl_dx11.h"
 
 //fonts 
 #include <SpriteBatch.h>
 #include <SpriteFont.h>
 //textures
 #include <WICTextureLoader.h>
+//ImGUI
+#include "ImGui/imgui.h"
+#include "ImGui/imgui_impl_win32.h"
+#include "ImGui/imgui_impl_dx11.h"
 
 
 class Graphics  
@@ -24,6 +22,7 @@ public:
     bool Initialize(HWND hwnd, int width, int height);  
     void RenderFrame();
     Camera camera;
+    RenderableGameObject gameObject;
 
 private:  
     bool InitializeDirectX(HWND hwnd);  
@@ -41,9 +40,6 @@ private:
     PixelShader voronoiseShader;
     PixelShader warpShader;
     
-    VertexBuffer<Vertex> vertexBuffer;
-    IndexBuffer indicesBuffer;
-
     ConstantBuffer<CB_VS_vertexShader> cb_vertexShader;
     ConstantBuffer<CB_PS_pixelShader> cb_pixelShader;
     ConstantBuffer<Voronoise_pixelShader> psConstantBuffer;
