@@ -47,7 +47,8 @@ void Engine::Update()
 		}
 	}
 
-	const float cameraSpeed = 0.005f;
+	const float cameraSpeed = 0.05f;
+	this->gfx.sentinel2.AdjustRotation(0.0f * dt, 0.001f * dt, 0.0f * dt);
 
 	if (keyboard.KeyIsPressed('W'))
 	{

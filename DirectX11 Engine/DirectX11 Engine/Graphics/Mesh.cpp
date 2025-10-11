@@ -42,6 +42,37 @@ void Mesh::Draw()
 	this->deviceContext->DrawIndexed(this->indexbuffer.IndexCount(), 0, 0);
 }
 
+
+void Mesh::DrawInstanced(ID3D11Buffer* const* instanceBufferAddressOf, const UINT* instanceBufferStridePtr, UINT instanceCount)
+{
+	if (instanceCount == 0)
+		return;
+
+	for (int i = 0; i < textures.size(); i++)
+	{
+		if (textures[i].GetType() == aiTextureType_DIFFUSE)
+		{
+			this->deviceContext->PSSetShaderResources(0, 1, textures[i].GetTextureResourceViewAddress());
+			break;
+		}
+	}
+
+	UINT offsets[] = { 0, 0 };
+
+	ID3D11Buffer* vertexBuffers[] = { this->vertexbuffer.Get(), *instanceBufferAddressOf };
+	const UINT strides[] = { *this->vertexbuffer.StridePtr(), *instanceBufferStridePtr };
+
+	this->deviceContext->IASetVertexBuffers(0, ARRAYSIZE(vertexBuffers), vertexBuffers, strides, offsets);
+	this->deviceContext->IASetIndexBuffer(this->indexbuffer.Get(), DXGI_FORMAT::DXGI_FORMAT_R32_UINT, 0);
+
+	this->deviceContext->DrawIndexedInstanced(
+		this->indexbuffer.IndexCount(), // IndexCountPerInstance
+		instanceCount,					// InstanceCount
+		0, 0, 0
+	);
+}
+
+
 const DirectX::XMMATRIX& Mesh::GetTransformMatrix()
 {
 	return this->transformMatrix;

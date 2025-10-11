@@ -197,6 +197,7 @@
     <ClInclude Include="Graphics\ImGui\imstb_textedit.h" />
     <ClInclude Include="Graphics\ImGui\imstb_truetype.h" />
     <ClInclude Include="Graphics\IndexBuffer.hpp" />
+    <ClInclude Include="Graphics\InstanceBuffer.hpp" />
     <ClInclude Include="Keyboard\KeyboardEvent.hpp" />
     <ClInclude Include="Keyboard\KeyboardClass.hpp" />
     <ClInclude Include="Graphics\Model.hpp" />

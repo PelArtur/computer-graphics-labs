@@ -3,6 +3,8 @@
 #include <sstream>
 #include <string>
 #include <windows.h>
+#include <iomanip>
+
 
 bool Graphics::Initialize(HWND hwnd, int width, int height) 
 {
@@ -187,7 +189,16 @@ bool Graphics::InitializeShaders()
 	D3D11_INPUT_ELEMENT_DESC layout[] =
 	{
 		{ "POSITION", 0, DXGI_FORMAT::DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D11_INPUT_CLASSIFICATION::D3D11_INPUT_PER_VERTEX_DATA, 0 },
-		{ "TEXCOORD", 0, DXGI_FORMAT::DXGI_FORMAT_R32G32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_CLASSIFICATION::D3D11_INPUT_PER_VERTEX_DATA, 0 }
+		{ "TEXCOORD", 0, DXGI_FORMAT::DXGI_FORMAT_R32G32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_CLASSIFICATION::D3D11_INPUT_PER_VERTEX_DATA, 0 },
+		//{ "INSTANCEOFFSET", 0, DXGI_FORMAT::DXGI_FORMAT_R32G32B32_FLOAT, 1, 0, D3D11_INPUT_CLASSIFICATION::D3D11_INPUT_PER_INSTANCE_DATA, 1 },
+
+		{ "INSTANCE_MAT", 0, DXGI_FORMAT::DXGI_FORMAT_R32G32B32A32_FLOAT, 1, 0, D3D11_INPUT_CLASSIFICATION::D3D11_INPUT_PER_INSTANCE_DATA, 1 },
+		// Matrix Row 2 (float4)
+		{ "INSTANCE_MAT", 1, DXGI_FORMAT::DXGI_FORMAT_R32G32B32A32_FLOAT, 1, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_CLASSIFICATION::D3D11_INPUT_PER_INSTANCE_DATA, 1 },
+		// Matrix Row 3 (float4)
+		{ "INSTANCE_MAT", 2, DXGI_FORMAT::DXGI_FORMAT_R32G32B32A32_FLOAT, 1, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_CLASSIFICATION::D3D11_INPUT_PER_INSTANCE_DATA, 1 },
+		// Matrix Row 4 (float4)
+		{ "INSTANCE_MAT", 3, DXGI_FORMAT::DXGI_FORMAT_R32G32B32A32_FLOAT, 1, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_CLASSIFICATION::D3D11_INPUT_PER_INSTANCE_DATA, 1 },
 	};
 	UINT numElements = ARRAYSIZE(layout);
 
@@ -207,314 +218,8 @@ bool Graphics::InitializeScene()
 {
 	try
 	{
-		{
-		//	Vertex v[] = {
-		//      //Front
-		//		Vertex(-0.5f, -0.5f, 0.0f, 0.0f, 1.0f),    //LD
-		//		Vertex(-0.5f,  0.5f, 0.0f, 0.0f, 0.0f),    //LU
-		//		Vertex(0.5f,  0.5f, 0.0f, 1.0f, 0.0f),    //RU
-		//		Vertex(0.5f, -0.5f, 0.0f, 1.0f, 1.0f),    //RD
-
-		//		//Right
-		//		Vertex(0.5f, -0.5f, 0.0f, 0.0f, 1.0f),    //LD
-		//		Vertex(0.5f,  0.5f, 0.0f, 0.0f, 0.0f),    //LU
-		//		Vertex(0.5f,  0.5f, 1.0f, 1.0f, 0.0f),    //RU
-		//		Vertex(0.5f, -0.5f, 1.0f, 1.0f, 1.0f),    //RD
-
-		//		//Back
-		//		Vertex(0.5f, -0.5f, 1.0f, 0.0f, 1.0f),    //LD
-		//		Vertex(0.5f,  0.5f, 1.0f, 0.0f, 0.0f),    //LU
-		//		Vertex(-0.5f, -0.5f, 1.0f, 1.0f, 1.0f),    //RD
-		//		Vertex(-0.5f,  0.5f, 1.0f, 1.0f, 0.0f),    //RU
-
-		//		//Left
-		//		Vertex(-0.5f, -0.5f, 1.0f, 0.0f, 1.0f),    //LD
-		//		Vertex(-0.5f,  0.5f, 1.0f, 0.0f, 0.0f),    //LU
-		//		Vertex(-0.5f, -0.5f, 0.0f, 1.0f, 1.0f),    //RD
-		//		Vertex(-0.5f,  0.5f, 0.0f, 1.0f, 0.0f),    //RU
-
-		//		//Up
-		//		Vertex(-0.5f,  0.5f, 0.0f, 0.0f, 1.0f),    //LD
-		//		Vertex(-0.5f,  0.5f, 1.0f, 0.0f, 0.0f),    //LU
-		//		Vertex(0.5f,  0.5f, 1.0f, 1.0f, 0.0f),    //RU
-		//		Vertex(0.5f,  0.5f, 0.0f, 1.0f, 1.0f),    //RD
-
-		//		//DOWN
-		//		Vertex(-0.5f, -0.5f, 1.0f, 0.0f, 1.0f),    //LD
-		//		Vertex(-0.5f, -0.5f, 0.0f, 0.0f, 0.0f),    //LU
-		//		Vertex(0.5f, -0.5f, 1.0f, 1.0f, 1.0f),    //RD
-		//		Vertex(0.5f, -0.5f, 0.0f, 1.0f, 0.0f),    //RU
-
-
-		//		// --- CUBE 2 (New Cube: Indices 24-47) ---
-		//		// Offset Cube 2 by 2.0 units on the X-axis.
-
-		//		// Front (Indices 24, 25, 26, 27)
-		//		Vertex(1.5f, -0.5f, 0.0f, 0.0f, 1.0f),    //LD 
-		//		Vertex(1.5f,  0.5f, 0.0f, 0.0f, 0.0f),    //LU
-		//		Vertex(2.5f,  0.5f, 0.0f, 1.0f, 0.0f),    //RU
-		//		Vertex(2.5f, -0.5f, 0.0f, 1.0f, 1.0f),    //RD
-
-		//		// Right (Indices 28, 29, 30, 31)
-		//		Vertex(2.5f, -0.5f, 0.0f, 0.0f, 1.0f),    //LD
-		//		Vertex(2.5f,  0.5f, 0.0f, 0.0f, 0.0f),    //LU
-		//		Vertex(2.5f,  0.5f, 1.0f, 1.0f, 0.0f),    //RU
-		//		Vertex(2.5f, -0.5f, 1.0f, 1.0f, 1.0f),    //RD
-
-		//		// Back (Indices 32, 33, 34, 35)
-		//		Vertex(2.5f, -0.5f, 1.0f, 0.0f, 1.0f),    //LD
-		//		Vertex(2.5f,  0.5f, 1.0f, 0.0f, 0.0f),    //LU
-		//		Vertex(1.5f, -0.5f, 1.0f, 1.0f, 1.0f),    //RD
-		//		Vertex(1.5f,  0.5f, 1.0f, 1.0f, 0.0f),    //RU
-
-		//		// Left (Indices 36, 37, 38, 39)
-		//		Vertex(1.5f, -0.5f, 1.0f, 0.0f, 1.0f),    //LD
-		//		Vertex(1.5f,  0.5f, 1.0f, 0.0f, 0.0f),    //LU
-		//		Vertex(1.5f, -0.5f, 0.0f, 1.0f, 1.0f),    //RD
-		//		Vertex(1.5f,  0.5f, 0.0f, 1.0f, 0.0f),    //RU
-
-		//		// Up (Indices 40, 41, 42, 43)
-		//		Vertex(1.5f,  0.5f, 0.0f, 0.0f, 1.0f),    //LD
-		//		Vertex(1.5f,  0.5f, 1.0f, 0.0f, 0.0f),    //LU
-		//		Vertex(2.5f,  0.5f, 1.0f, 1.0f, 0.0f),    //RU
-		//		Vertex(2.5f,  0.5f, 0.0f, 1.0f, 1.0f),    //RD
-
-		//		// DOWN (Indices 44, 45, 46, 47)
-		//		Vertex(1.5f, -0.5f, 1.0f, 0.0f, 1.0f),    //LD
-		//		Vertex(1.5f, -0.5f, 0.0f, 0.0f, 0.0f),    //LU
-		//		Vertex(2.5f, -0.5f, 1.0f, 1.0f, 1.0f),    //RD
-		//		Vertex(2.5f, -0.5f, 0.0f, 1.0f, 0.0f),    //RU
-
-
-		//		// --- CUBE 3 (New Cube: Indices 48-71) ---
-		//		// Offset Cube 3 by -2.0 units on the X-axis.
-
-		//		// Front (Indices 48, 49, 50, 51)
-		//		Vertex(-2.5f, -0.5f, 0.0f, 0.0f, 1.0f),    //LD (-0.5 - 2.0 = -2.5)
-		//		Vertex(-2.5f,  0.5f, 0.0f, 0.0f, 0.0f),    //LU
-		//		Vertex(-1.5f,  0.5f, 0.0f, 1.0f, 0.0f),    //RU ( 0.5 - 2.0 = -1.5)
-		//		Vertex(-1.5f, -0.5f, 0.0f, 1.0f, 1.0f),    //RD
-
-		//		// Right (Indices 52, 53, 54, 55)
-		//		Vertex(-1.5f, -0.5f, 0.0f, 0.0f, 1.0f),    //LD
-		//		Vertex(-1.5f,  0.5f, 0.0f, 0.0f, 0.0f),    //LU
-		//		Vertex(-1.5f,  0.5f, 1.0f, 1.0f, 0.0f),    //RU
-		//		Vertex(-1.5f, -0.5f, 1.0f, 1.0f, 1.0f),    //RD
-
-		//		// Back (Indices 56, 57, 58, 59)
-		//		Vertex(-1.5f, -0.5f, 1.0f, 0.0f, 1.0f),    //LD
-		//		Vertex(-1.5f,  0.5f, 1.0f, 0.0f, 0.0f),    //LU
-		//		Vertex(-2.5f, -0.5f, 1.0f, 1.0f, 1.0f),    //RD
-		//		Vertex(-2.5f,  0.5f, 1.0f, 1.0f, 0.0f),    //RU
-
-		//		// Left (Indices 60, 61, 62, 63)
-		//		Vertex(-2.5f, -0.5f, 1.0f, 0.0f, 1.0f),    //LD
-		//		Vertex(-2.5f,  0.5f, 1.0f, 0.0f, 0.0f),    //LU
-		//		Vertex(-2.5f, -0.5f, 0.0f, 1.0f, 1.0f),    //RD
-		//		Vertex(-2.5f,  0.5f, 0.0f, 1.0f, 0.0f),    //RU
-
-		//		// Up (Indices 64, 65, 66, 67)
-		//		Vertex(-2.5f,  0.5f, 0.0f, 0.0f, 1.0f),    //LD
-		//		Vertex(-2.5f,  0.5f, 1.0f, 0.0f, 0.0f),    //LU
-		//		Vertex(-1.5f,  0.5f, 1.0f, 1.0f, 0.0f),    //RU
-		//		Vertex(-1.5f,  0.5f, 0.0f, 1.0f, 1.0f),    //RD
-
-		//		// DOWN (Indices 68, 69, 70, 71)
-		//		Vertex(-2.5f, -0.5f, 1.0f, 0.0f, 1.0f),    //LD
-		//		Vertex(-2.5f, -0.5f, 0.0f, 0.0f, 0.0f),    //LU
-		//		Vertex(-1.5f, -0.5f, 1.0f, 1.0f, 1.0f),    //RD
-		//		Vertex(-1.5f, -0.5f, 0.0f, 1.0f, 0.0f),    //RU
-
-		//		// --- CUBE 4 (New Cube: Indices 72-95) ---
-		//		// Offset Cube 4 by +2.0 units on the Y-axis.
-
-		//		// Front (Indices 72, 73, 74, 75)
-		//		Vertex(-0.5f, 1.5f, 0.0f, 0.0f, 1.0f),    //LD (-0.5 + 2.0 = 1.5)
-		//		Vertex(-0.5f, 2.5f, 0.0f, 0.0f, 0.0f),    //LU ( 0.5 + 2.0 = 2.5)
-		//		Vertex(0.5f, 2.5f, 0.0f, 1.0f, 0.0f),    //RU
-		//		Vertex(0.5f, 1.5f, 0.0f, 1.0f, 1.0f),    //RD
-
-		//		// Right (Indices 76, 77, 78, 79)
-		//		Vertex(0.5f, 1.5f, 0.0f, 0.0f, 1.0f),    //LD
-		//		Vertex(0.5f, 2.5f, 0.0f, 0.0f, 0.0f),    //LU
-		//		Vertex(0.5f, 2.5f, 1.0f, 1.0f, 0.0f),    //RU
-		//		Vertex(0.5f, 1.5f, 1.0f, 1.0f, 1.0f),    //RD
-
-		//		// Back (Indices 80, 81, 82, 83)
-		//		Vertex(0.5f, 1.5f, 1.0f, 0.0f, 1.0f),    //LD
-		//		Vertex(0.5f, 2.5f, 1.0f, 0.0f, 0.0f),    //LU
-		//		Vertex(-0.5f, 1.5f, 1.0f, 1.0f, 1.0f),    //RD
-		//		Vertex(-0.5f, 2.5f, 1.0f, 1.0f, 0.0f),    //RU
-
-		//		// Left (Indices 84, 85, 86, 87)
-		//		Vertex(-0.5f, 1.5f, 1.0f, 0.0f, 1.0f),    //LD
-		//		Vertex(-0.5f, 2.5f, 1.0f, 0.0f, 0.0f),    //LU
-		//		Vertex(-0.5f, 1.5f, 0.0f, 1.0f, 1.0f),    //RD
-		//		Vertex(-0.5f, 2.5f, 0.0f, 1.0f, 0.0f),    //RU
-
-		//		// Up (Indices 88, 89, 90, 91)
-		//		Vertex(-0.5f, 2.5f, 0.0f, 0.0f, 1.0f),    //LD
-		//		Vertex(-0.5f, 2.5f, 1.0f, 0.0f, 0.0f),    //LU
-		//		Vertex(0.5f, 2.5f, 1.0f, 1.0f, 0.0f),    //RU
-		//		Vertex(0.5f, 2.5f, 0.0f, 1.0f, 1.0f),    //RD
-
-		//		// DOWN (Indices 92, 93, 94, 95)
-		//		Vertex(-0.5f, 1.5f, 1.0f, 0.0f, 1.0f),    //LD
-		//		Vertex(-0.5f, 1.5f, 0.0f, 0.0f, 0.0f),    //LU
-		//		Vertex(0.5f, 1.5f, 1.0f, 1.0f, 1.0f),    //RD
-		//		Vertex(0.5f, 1.5f, 0.0f, 1.0f, 0.0f),    //RU
-
-		//		// --- CUBE 5 (New Cube: Indices 96-119) ---
-		//		// Offset Cube 4 by +2.0 units on the Y-axis.
-
-		//		// Front 
-		//		Vertex(-5.0f, -5.0f, 5.0f, 0.0f, 1.0f),   //LD
-		//		Vertex(-5.0f, 5.0f, 5.0f, 0.0f, 0.0f),   //LU
-		//		Vertex(5.0f, 5.0f, 5.0f, 1.0f, 0.0f),   //RU
-		//		Vertex(5.0f, -5.0f, 5.0f, 1.0f, 1.0f),   //RD
-
-		//		// Right
-		//		Vertex(5.0f, -5.0f, 5.0f, 0.0f, 1.0f),   //LD
-		//		Vertex(5.0f, 5.0f, 5.0f, 0.0f, 0.0f),   //LU
-		//		Vertex(5.0f, 5.0f, 15.0f, 1.0f, 0.0f),  //RU
-		//		Vertex(5.0f, -5.0f, 15.0f, 1.0f, 1.0f),  //RD
-
-		//		// Back
-		//		Vertex(5.0f, -5.0f, 15.0f, 0.0f, 1.0f),  //LD
-		//		Vertex(5.0f, 5.0f, 15.0f, 0.0f, 0.0f),  //LU
-		//		Vertex(-5.0f, -5.0f, 15.0f, 1.0f, 1.0f),  //RD
-		//		Vertex(-5.0f, 5.0f, 15.0f, 1.0f, 0.0f),  //RU
-
-		//		// Left
-		//		Vertex(-5.0f, -5.0f, 15.0f, 0.0f, 1.0f),  //LD
-		//		Vertex(-5.0f, 5.0f, 15.0f, 0.0f, 0.0f),  //LU
-		//		Vertex(-5.0f, -5.0f, 5.0f, 1.0f, 1.0f),   //RD
-		//		Vertex(-5.0f, 5.0f, 5.0f, 1.0f, 0.0f),   //RU
-
-		//		// Up
-		//		Vertex(-5.0f, 5.0f, 5.0f, 0.0f, 1.0f),   //LD
-		//		Vertex(-5.0f, 5.0f, 15.0f, 0.0f, 0.0f),  //LU
-		//		Vertex(5.0f, 5.0f, 15.0f, 1.0f, 0.0f),  //RU
-		//		Vertex(5.0f, 5.0f, 5.0f, 1.0f, 1.0f),   //RD
-
-		//		// Down
-		//		Vertex(-5.0f, -5.0f, 15.0f, 0.0f, 1.0f),  //LD
-		//		Vertex(-5.0f, -5.0f, 5.0f, 0.0f, 0.0f),   //LU
-		//		Vertex(5.0f, -5.0f, 15.0f, 1.0f, 1.0f),  //RD
-		//		Vertex(5.0f, -5.0f, 5.0f, 1.0f, 0.0f),   //RU
-		//	};
-
-		//	DWORD indices[] =
-		//	{
-		//		0, 1, 2,     //Front1
-		//		4, 5, 6,     //Right1
-		//		9, 11, 10,   //Back2
-		//		13, 15, 14,  //Left2
-		//		16, 17, 18,  //Up1
-		//		21, 23, 22,  //Bottom2
-
-		//		0, 2, 3,     //Front2
-		//		4, 6, 7,     //Right2
-		//		8, 9, 10,    //Back1
-		//		12, 13, 14,  //Left1
-		//		16, 18, 19,  //Up2
-		//		20, 21, 22,  //Bottom1
-
-		//		//Front (24, 25, 26, 27)
-		//		24, 25, 26,
-		//		24, 26, 27,
-		//		//Right (28, 29, 30, 31)
-		//		28, 29, 30,
-		//		28, 30, 31,
-		//		//Back (32, 33, 34, 35)
-		//		32, 33, 34,
-		//		33, 35, 34,
-		//		//Left (36, 37, 38, 39)
-		//		36, 37, 38,
-		//		37, 39, 38,
-		//		//Up (40, 41, 42, 43)
-		//		40, 41, 42,
-		//		40, 42, 43,
-		//		//Bottom (44, 45, 46, 47)
-		//		44, 45, 46,
-		//		45, 47, 46,
-
-		//		//Front (48, 49, 50, 51)
-		//		48, 49, 50,
-		//		48, 50, 51,
-		//		//Right1 (52, 53, 54, 55)
-		//		52, 53, 54,
-		//		52, 54, 55,
-		//		//Back (56, 57, 58, 59)
-		//		56, 57, 58,
-		//		57, 59, 58,
-		//		//Left (60, 61, 62, 63)
-		//		60, 61, 62,
-		//		61, 63, 62,
-		//		//Up (64, 65, 66, 67)
-		//		64, 65, 66,
-		//		64, 66, 67,
-		//		//Bottom (68, 69, 70, 71)
-		//		68, 69, 70,
-		//		69, 71, 70,
-
-		//		// Front (72, 73, 74, 75)
-		//		72, 73, 74,
-		//		72, 74, 75,
-		//		// Right (76, 77, 78, 79)
-		//		76, 77, 78,
-		//		76, 78, 79,
-		//		// Back (80, 81, 82, 83)
-		//		80, 81, 82,
-		//		81, 83, 82,
-		//		// Left (84, 85, 86, 87)
-		//		84, 85, 86,
-		//		85, 87, 86,
-		//		// Up (88, 89, 90, 91)
-		//		88, 89, 90,
-		//		88, 90, 91,
-		//		// Bottom (92, 93, 94, 95)
-		//		92, 93, 94,
-		//		93, 95, 94,
-
-		//		// Front (96, 97, 98, 99)
-		//		96, 97, 98,
-		//		96, 98, 99,
-		//		// Right (100, 101, 102, 103)
-		//		100, 101, 102,
-		//		100, 102, 103,
-		//		// Back (104, 105, 106, 107)
-		//		104, 105, 106,
-		//		105, 107, 106,
-		//		// Left (108, 109, 110, 111)
-		//		108, 109, 110,
-		//		109, 111, 110,
-		//		// Up (112, 113, 114, 115)
-		//		112, 113, 114,
-		//		112, 114, 115,
-		//		// Bottom (116, 117, 118, 119)
-		//		116, 117, 118,
-		//		117, 119, 118,
-		//	};
-
-		//	//Vertex buffer
-		//	HRESULT hr = this->vertexBuffer.Initialize(this->device.Get(), v, ARRAYSIZE(v));
-		//	COM_ERROR_IF_FAILED(hr, "Failed to create vertex buffer.");
-
-		//	//Index buffer
-		//	hr = this->indicesBuffer.Initialize(this->device.Get(), indices, ARRAYSIZE(indices));
-		//	COM_ERROR_IF_FAILED(hr, "Failed to create indices buffer.");
-		}
-
-		//Texture
-		HRESULT hr = DirectX::CreateWICTextureFromFile(this->device.Get(), L"Data/Textures/profile1.jpg", nullptr, myTexture.GetAddressOf());
-		COM_ERROR_IF_FAILED(hr, "Failed to create wic texture from file.");
-
-		hr = DirectX::CreateWICTextureFromFile(this->device.Get(), L"Data/Textures/profile2.jpg", nullptr, myTexture2.GetAddressOf());
-		COM_ERROR_IF_FAILED(hr, "Failed to create wic texture from file.");
-
 		//Constant buffers
-		hr = this->cb_vertexShader.Initialize(this->device.Get(), this->deviceContext.Get());
+		HRESULT hr = this->cb_vertexShader.Initialize(this->device.Get(), this->deviceContext.Get());
 		COM_ERROR_IF_FAILED(hr, "Failed to initialize constant buffer.");
 
 		hr = this->cb_pixelShader.Initialize(this->device.Get(), this->deviceContext.Get());
@@ -540,11 +245,168 @@ bool Graphics::InitializeScene()
 			1.0f / static_cast<float>(windowHeight)
 		};
 
+		std::vector<Vertex> vertices = {
+			Vertex(-0.5f, -0.5f, 0.0f, 0.0f, 1.0f),
+			Vertex(-0.5f,  0.5f, 0.0f, 0.0f, 0.0f),
+			Vertex(0.5f,  0.5f, 0.0f, 1.0f, 0.0f),
+			Vertex(0.5f, -0.5f, 0.0f, 1.0f, 1.0f),
+
+			Vertex(0.5f, -0.5f, 0.0f, 0.0f, 1.0f),
+			Vertex(0.5f,  0.5f, 0.0f, 0.0f, 0.0f),
+			Vertex(0.5f,  0.5f, 1.0f, 1.0f, 0.0f),
+			Vertex(0.5f, -0.5f, 1.0f, 1.0f, 1.0f),
+
+			Vertex(0.5f, -0.5f, 1.0f, 0.0f, 1.0f),
+			Vertex(0.5f,  0.5f, 1.0f, 0.0f, 0.0f),
+			Vertex(-0.5f, -0.5f, 1.0f, 1.0f, 1.0f),
+			Vertex(-0.5f,  0.5f, 1.0f, 1.0f, 0.0f),
+
+			Vertex(-0.5f, -0.5f, 1.0f, 0.0f, 1.0f),
+			Vertex(-0.5f,  0.5f, 1.0f, 0.0f, 0.0f),
+			Vertex(-0.5f, -0.5f, 0.0f, 1.0f, 1.0f),
+			Vertex(-0.5f,  0.5f, 0.0f, 1.0f, 0.0f),
+
+			Vertex(-0.5f,  0.5f, 0.0f, 0.0f, 1.0f),
+			Vertex(-0.5f,  0.5f, 1.0f, 0.0f, 0.0f),
+			Vertex(0.5f,  0.5f, 1.0f, 1.0f, 0.0f),
+			Vertex(0.5f,  0.5f, 0.0f, 1.0f, 1.0f),
+
+			Vertex(-0.5f, -0.5f, 1.0f, 0.0f, 1.0f),
+			Vertex(-0.5f, -0.5f, 0.0f, 0.0f, 0.0f),
+			Vertex(0.5f, -0.5f, 1.0f, 1.0f, 1.0f),
+			Vertex(0.5f, -0.5f, 0.0f, 1.0f, 0.0f)
+		};
+
+		std::vector<DWORD> indices = {
+			0, 1, 2,
+			4, 5, 6,
+			9, 11, 10,
+			13, 15, 14,
+			16, 17, 18,
+			21, 23, 22,
+			0, 2, 3,
+			4, 6, 7,
+			8, 9, 10,
+			12, 13, 14,
+			16, 18, 19,
+			20, 21, 22
+		};
+
+
+		std::vector<Texture> textures;
+		textures.emplace_back(this->device.Get(), "Data/Textures/grid.jpg", aiTextureType::aiTextureType_DIFFUSE);
+
 		//Initialize Model
 		//if (!gameObject.Initialize("Data/Models/roblox_guy/source/RBLXTriGuard.fbx", this->device.Get(), this->deviceContext.Get(), cb_vertexShader))
 		//	return false;
-		if (!gameObject.Initialize("Data/Models/sentinel/rq170.glb", this->device.Get(), this->deviceContext.Get(), cb_vertexShader))
+		//if (!gameObject.Initialize("Data/Models/sentinel/rq170.glb", this->device.Get(), this->deviceContext.Get(), cb_vertexShader))
+		//	return false;
+		if (!plane.Initialize(vertices, indices, textures, XMMatrixIdentity(), this->device.Get(), this->deviceContext.Get(), cb_vertexShader))
 			return false;
+		if (!grassBlock.Initialize("Data/Models/minecraft/grass_block/minecraft_grass_block.glb", this->device.Get(), this->deviceContext.Get(), cb_vertexShader))
+			return false;
+		if (!sentinel1.Initialize("Data/Models/sentinel/rq170.glb", this->device.Get(), this->deviceContext.Get(), cb_vertexShader))
+			return false;
+		if (!sentinel2.Initialize("Data/Models/sentinel/rq170.glb", this->device.Get(), this->deviceContext.Get(), cb_vertexShader))
+			return false;
+
+		//Grass blocks instancing
+		{
+			const int size_x = 100;
+			const int size_y = 100;
+			const int size_z = 1;
+
+			int start_x = -(size_x - 1) / 2;
+			int end_x = (size_x - 1) / 2;
+
+			int start_y = -size_y / 2;
+			int end_y = size_y / 2 - 1;
+
+			int start_z = -(size_z - 1) / 2;
+			int end_z = (size_z - 1) / 2;
+			std::vector<InstanceMatrixData> grassBlockInstanceMatrices;
+
+			for (int x = start_x; x <= end_x; ++x)
+			{
+				for (int y = start_y; y <= end_y; ++y)
+				{
+					for (int z = start_z; z <= end_z; ++z)
+					{
+						InstanceMatrixData data;
+
+						DirectX::XMVECTOR offset = DirectX::XMVectorSet(
+							(float)x * 4.0f,
+							(float)y * 4.0f + 250.0f,
+							(float)z * 4.0f + 3.0f,
+							1.0f
+						);
+
+						DirectX::XMMATRIX translationMatrix = DirectX::XMMatrixTranslationFromVector(offset);
+
+						data.instanceMatrix = translationMatrix;
+						grassBlockInstanceMatrices.push_back(data);
+					}
+				}
+			}
+			grassBlock.SetInstanceData(grassBlockInstanceMatrices, this->device.Get());
+		}
+
+		//Plane instancing
+		{
+			std::vector<InstanceMatrixData> planeInstanceMatrix;
+			InstanceMatrixData data;
+			float scale_x = 500.0f;
+			float scale_y = 1.0f;
+			float scale_z = 500.0f;
+
+			float loc_x = 0.0f;
+			float loc_y = -5.0f;
+			float loc_z = -52.0f;
+
+			DirectX::XMMATRIX scaleMatrix = DirectX::XMMatrixScaling(scale_x, scale_y, scale_z);
+
+			DirectX::XMMATRIX translationMatrix = DirectX::XMMatrixTranslation(loc_x, loc_y, loc_z);
+
+			data.instanceMatrix = scaleMatrix * translationMatrix;
+			planeInstanceMatrix.push_back(data);
+			plane.SetInstanceData(planeInstanceMatrix, this->device.Get());
+		}
+
+		//Sentine1 instancing
+		{
+			std::vector<InstanceMatrixData> sentinel1InstanceMatrix;
+			InstanceMatrixData data;
+
+			float loc_x = 0.0f;
+			float loc_y = 0.0f;
+			float loc_z = -4.4f;
+
+			data.instanceMatrix = DirectX::XMMatrixTranslation(loc_x, loc_y, loc_z);
+			sentinel1InstanceMatrix.push_back(data);
+			sentinel1.SetInstanceData(sentinel1InstanceMatrix, this->device.Get());
+		}
+
+		//Sentine2 instancing
+		{
+			std::vector<InstanceMatrixData> sentinel2InstanceMatrix;
+			InstanceMatrixData data;
+			float scale_x = 5.0f;
+			float scale_y = 5.0f;
+			float scale_z = 5.0f;
+
+			float loc_x = 0.0f;
+			float loc_y = -100.0f;
+			float loc_z = 40.0f;
+
+			DirectX::XMMATRIX scaleMatrix = DirectX::XMMatrixScaling(scale_x, scale_y, scale_z);
+
+			DirectX::XMMATRIX translationMatrix = DirectX::XMMatrixTranslation(loc_x, loc_y, loc_z);
+
+			data.instanceMatrix = scaleMatrix * translationMatrix;
+			sentinel2InstanceMatrix.push_back(data);
+			sentinel2.SetInstanceData(sentinel2InstanceMatrix, this->device.Get());
+			sentinel2.SetRotation(0.0f, 0.0f, 0.5f);
+		}
 
 		camera.SetPosition(0.0f, 0.0f, -2.0f);
 		camera.SetProjectionValues(90.0f, static_cast<float>(windowWidth) / static_cast<float>(windowHeight), 0.1f, 1000.0f);
@@ -575,109 +437,21 @@ void Graphics::RenderFrame()
 	this->deviceContext->VSSetShader(vertexShader.GetShader(), NULL, 0);
 	this->deviceContext->PSSetShader(pixelShader.GetShader(), NULL, 0);
 
-	UINT offset = 0;
-
-	//static float translationOffset1[3] = { 0, 0, 0 };
-	//static float alpha1 = 1.0f;
-	////Camera
-	//XMMATRIX worldMatrix = XMMatrixTranslation(translationOffset1[0], translationOffset1[1], translationOffset1[2]);
-	//XMMATRIX viewMatrixXM = camera.GetViewMatrix();
-	//XMMATRIX projectionMatrixXM = camera.GetProjectionMatrix();
-	//DirectX::XMMATRIX wvp = worldMatrix * camera.GetViewMatrix() * camera.GetProjectionMatrix();
-	//cb_vertexShader.data.mat = wvp;
-
-	////Update Constant Buffer
-	//if (!cb_vertexShader.ApplyChanges())
-	//	return;
-
-	//this->deviceContext->VSSetConstantBuffers(0, 1, this->cb_vertexShader.GetAddressOf());
-	//this->deviceContext->PSSetShaderResources(0, 1, this->myTexture.GetAddressOf());
-	//this->deviceContext->IASetVertexBuffers(0, 1, vertexBuffer.GetAddressOf(), vertexBuffer.StridePtr(), &offset);
-	//this->deviceContext->IASetIndexBuffer(indicesBuffer.Get(), DXGI_FORMAT_R32_UINT, 0);
-	//this->deviceContext->DrawIndexed(indicesBuffer.BufferSize(), 0, 0);
-
-	//this->psConstantBuffer.data.iTime = (float)this->shadersTimer.GetMilisecondsElapsed() / 1000.0f;
-	//this->psConstantBuffer.data.iMouse = this->mouseData;
-	//if (!psConstantBuffer.ApplyChanges())
-	//	return;
-
-	//this->warpConstantBuffer.data.iTime = (float)this->shadersTimer.GetMilisecondsElapsed() / 1000.0f;
-	//if (!warpConstantBuffer.ApplyChanges())
-	//	return;
-
-	//this->cb_pixelShader.data.alpha = alpha1;
-	//if (!cb_pixelShader.ApplyChanges())
-	//	return;
-
-	//this->deviceContext->IASetVertexBuffers(0, 1, vertexBuffer.GetAddressOf(), vertexBuffer.StridePtr(), &offset);
-	//this->deviceContext->IASetIndexBuffer(indicesBuffer.Get(), DXGI_FORMAT_R32_UINT, 0);
-	//this->deviceContext->VSSetConstantBuffers(0, 1, this->cb_vertexShader.GetAddressOf());
-	//this->deviceContext->PSSetConstantBuffers(0, 1, this->cb_pixelShader.GetAddressOf());
-
-	//UINT indexBufferSize4 = indicesBuffer.BufferSize() / 5 * 4;
-	//UINT boxVertices = indexBufferSize4 / 4;
-
-	////PixelShader1
-	//this->deviceContext->PSSetShader(pixelShader.GetShader(), NULL, 0);
-	//this->deviceContext->PSSetShaderResources(0, 1, this->myTexture.GetAddressOf());
-	//this->deviceContext->DrawIndexed(boxVertices, indexBufferSize4 / 2 + boxVertices, 0);
-
-	//////PixelShader2
-	//this->deviceContext->PSSetShader(voronoiseShader.GetShader(), NULL, 0);
-	//this->deviceContext->PSSetConstantBuffers(1, 1, this->psConstantBuffer.GetAddressOf());
-	//this->deviceContext->DrawIndexed(boxVertices, 0, 0);                                //first box
-	//this->deviceContext->DrawIndexed(boxVertices, indexBufferSize4 / 8, 0);  //first box
-	//this->deviceContext->DrawIndexed(boxVertices, indexBufferSize4 / 2, 0);  //third box
-
-	//////PixelShader3
-	//this->deviceContext->PSSetShader(warpShader.GetShader(), NULL, 0);
-	//this->deviceContext->PSSetConstantBuffers(2, 1, this->psConstantBuffer.GetAddressOf());
-	//this->deviceContext->DrawIndexed(boxVertices, indexBufferSize4 / 8, 0);  //first box
-	//this->deviceContext->DrawIndexed(boxVertices, indexBufferSize4 / 4, 0);   //second box
-
 	static float translationOffset[3] = { 0, 0, 0 };
 	static float rotationOffset[3] = { 0, 0, 0 };
 	static float alpha = 1.0f;
-	{ //back vox/
-		/*worldMatrix = XMMatrixTranslation(translationOffset2[0], translationOffset2[1], translationOffset2[2]);
-		viewMatrixXM = camera.GetViewMatrix();
-		projectionMatrixXM = camera.GetProjectionMatrix();
-		wvp = worldMatrix * camera.GetViewMatrix() * camera.GetProjectionMatrix();
-		cb_vertexShader.data.mat = wvp;
+	{
+		this->plane.Draw(camera.GetViewMatrix() * camera.GetProjectionMatrix());
+		this->grassBlock.Draw(camera.GetViewMatrix() * camera.GetProjectionMatrix());
 
-		if (!cb_vertexShader.ApplyChanges())
-			return;
-
-		this->cb_pixelShader.data.alpha = alpha2;
-		if (!cb_pixelShader.ApplyChanges())
-			return;
-
-		this->deviceContext->IASetVertexBuffers(0, 1, vertexBuffer.GetAddressOf(), vertexBuffer.StridePtr(), &offset);
-		this->deviceContext->IASetIndexBuffer(indicesBuffer.Get(), DXGI_FORMAT_R32_UINT, 0);
-		this->deviceContext->VSSetConstantBuffers(0, 1, this->cb_vertexShader.GetAddressOf());
-		this->deviceContext->PSSetConstantBuffers(0, 1, this->cb_pixelShader.GetAddressOf());
-		this->deviceContext->PSSetShader(pixelShader.GetShader(), NULL, 0);
-		this->deviceContext->PSSetShaderResources(0, 1, this->myTexture2.GetAddressOf());
-		this->deviceContext->DrawIndexed(boxVertices, indexBufferSize4, 0);*/
-
-		this->gameObject.SetPosition(translationOffset[0], translationOffset[1], translationOffset[2]);
-		this->gameObject.SetRotation(rotationOffset[0], rotationOffset[1], rotationOffset[2]);
-		this->gameObject.Draw(camera.GetViewMatrix() * camera.GetProjectionMatrix());
+		this->sentinel1.SetPosition(translationOffset[0], translationOffset[1], translationOffset[2]);
+		this->sentinel1.SetRotation(rotationOffset[0], rotationOffset[1], rotationOffset[2]);
+		this->sentinel1.Draw(camera.GetViewMatrix() * camera.GetProjectionMatrix());
+		this->sentinel2.Draw(camera.GetViewMatrix() * camera.GetProjectionMatrix());
 	}
 
 	//FPS counter
-	static int fpsCounter = 0;
-	static std::string fpsString = "FPS: 0";
-	fpsCounter += 1;
-	if (fpsTimer.GetMilisecondsElapsed() > 1000.0)
-	{
-		fpsString = "FPS: " + std::to_string(fpsCounter);
-		fpsCounter = 0;
-		fpsTimer.Restart();
-	}
-	spriteBatch->Begin();
-	spriteFont->DrawString(spriteBatch.get(), StringHelper::StringToWide(fpsString).c_str(), DirectX::XMFLOAT2(0, 0), DirectX::Colors::White, 0.0f, DirectX::XMFLOAT2(0.0f, 0.0f), DirectX::XMFLOAT2(1.0f, 1.0f));
-	spriteBatch->End();
+	ShowFPSstats();
 
 	ImGui_ImplDX11_NewFrame();
 	ImGui_ImplWin32_NewFrame();
@@ -686,11 +460,61 @@ void Graphics::RenderFrame()
 	ImGui::Begin("Model");
 	ImGui::DragFloat3("coords", translationOffset, 0.1f, -10.0f, 10.0f);
 	ImGui::DragFloat3("rotation", rotationOffset, 0.1f, -10.0f, 10.0f);
-	//ImGui::DragFloat("alpha1", &alpha, 0.01f, 0.0f, 1.0f);
-	//ImGui::DragFloat3("coords2", translationOffset2, 0.1f, -10.0f, 10.0f);
-	//ImGui::DragFloat("alpha2", &alpha2, 0.01f, 0.0f, 1.0f);
 	ImGui::End();
 	ImGui::Render();
 	ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());
 	this->swapchain->Present(0, NULL); //VSYNC ON -- 1, OFF -- 0
+}
+
+
+void Graphics::ShowFPSstats()
+{
+	static int fpsCounter = 0;
+	static float timeAccumulator = 0.0f;
+	static std::string fpsString = "FPS: 0";
+	static std::string msString = "MS/Frame: 0.0";
+
+	float msPerFrame = fpsTimer.GetMilisecondsElapsed();
+	fpsTimer.Restart();
+
+	fpsCounter++;
+	timeAccumulator += msPerFrame;
+
+	const float UPDATE_INTERVAL_MS = 500.0f;
+
+	if (timeAccumulator >= UPDATE_INTERVAL_MS)
+	{
+		float averageMs = timeAccumulator / fpsCounter;
+
+		std::stringstream ss_ms;
+		ss_ms << "MS/Frame: " << std::fixed << std::setprecision(5) << averageMs;
+		msString = ss_ms.str();
+
+		float averageFps = 1000.0f / averageMs;
+
+		std::stringstream ss_fps;
+		ss_fps << "FPS: " << std::fixed << std::setprecision(0) << averageFps;
+		fpsString = ss_fps.str();
+
+		fpsCounter = 0;
+		timeAccumulator = 0.0f;
+	}
+
+	spriteBatch->Begin();
+
+	spriteFont->DrawString(
+		spriteBatch.get(),
+		StringHelper::StringToWide(fpsString).c_str(),
+		DirectX::XMFLOAT2(0, 0),
+		DirectX::Colors::White
+	);
+
+	spriteFont->DrawString(
+		spriteBatch.get(),
+		StringHelper::StringToWide(msString).c_str(),
+		DirectX::XMFLOAT2(0, 20),
+		DirectX::Colors::White
+	);
+
+	spriteBatch->End();
 }

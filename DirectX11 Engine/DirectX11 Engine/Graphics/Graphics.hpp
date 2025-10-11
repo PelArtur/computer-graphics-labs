@@ -22,13 +22,17 @@ public:
     bool Initialize(HWND hwnd, int width, int height);  
     void RenderFrame();
     Camera camera;
-    RenderableGameObject gameObject;
+    RenderableGameObject grassBlock;
+    RenderableGameObject sentinel1;
+    RenderableGameObject sentinel2;
+    RenderableGameObject plane;
 
 private:  
     bool InitializeDirectX(HWND hwnd);  
     bool InitializeShaders();  
-    bool InitializeScene();  
-
+    bool InitializeScene();
+    void ShowFPSstats();
+ 
     Microsoft::WRL::ComPtr<ID3D11Device> device;                       //buffers  
     Microsoft::WRL::ComPtr<ID3D11DeviceContext> deviceContext;         //shader resource for shaders  
     Microsoft::WRL::ComPtr<IDXGISwapChain> swapchain;                  //swapping frames   

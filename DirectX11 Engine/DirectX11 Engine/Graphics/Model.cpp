@@ -6,6 +6,8 @@ bool Model::Initialize(const std::string& filePath, ID3D11Device* device, ID3D11
 	this->device = device;
 	this->deviceContext = deviceContext;
 	this->cb_vertexShader = &cb_vertexShader;
+	auto defaultInstanceMatrix = getDefaultInstanceMatrix();
+	SetInstanceData(defaultInstanceMatrix, device);
 
 	try
 	{
@@ -22,16 +24,71 @@ bool Model::Initialize(const std::string& filePath, ID3D11Device* device, ID3D11
 }
 
 
+bool Model::Initialize(std::vector<Vertex>& vertices, std::vector<DWORD>& indices, std::vector<Texture>& textures, const XMMATRIX& transform, ID3D11Device* device, ID3D11DeviceContext* deviceContext, ConstantBuffer<CB_VS_vertexShader>& cb_vertexShader)
+{
+	this->device = device;
+	this->deviceContext = deviceContext;
+	this->cb_vertexShader = &cb_vertexShader;
+
+	try
+	{
+		meshes.emplace_back(Mesh(device, deviceContext, vertices, indices, textures, transform));
+	}
+	catch (COMException& exception)
+	{
+		ErrorLogger::Log(exception);
+		return false;
+	}
+
+	return true;
+}
+
+
 void Model::Draw(const XMMATRIX& worldMatrix, const XMMATRIX& viewProjectionMatrix)
 {
 	this->deviceContext->VSSetConstantBuffers(0, 1, this->cb_vertexShader->GetAddressOf());
+	XMMATRIX WVP = worldMatrix * viewProjectionMatrix;
 
 	for (int i = 0; i < meshes.size(); i++)
 	{
-		this->cb_vertexShader->data.mat = meshes[i].GetTransformMatrix() * worldMatrix * viewProjectionMatrix;
+		this->cb_vertexShader->data.mat = meshes[i].GetTransformMatrix() * WVP;
 		this->cb_vertexShader->ApplyChanges();
-		meshes[i].Draw();
+
+		if (this->GetInstanceCount() == 0)
+		{
+			meshes[i].Draw();
+		}
+		else
+		{
+			meshes[i].DrawInstanced(
+				this->GetInstanceBufferAddressOf(),
+				this->GetInstanceBufferStridePtr(),
+				this->GetInstanceCount()
+			);
+		}
 	}
+}
+
+
+const std::vector<InstanceMatrixData> Model::getDefaultInstanceMatrix()
+{
+	std::vector<InstanceMatrixData> instanceBasicMatrix;
+	InstanceMatrixData data;
+	data.instanceMatrix = XMMatrixIdentity();
+	instanceBasicMatrix.push_back(data);
+	return instanceBasicMatrix;
+}
+
+
+void Model::SetInstanceData(const std::vector<InstanceMatrixData>& data, ID3D11Device* device)
+{
+	if (data.size() > 0)
+		this->instanceData = data;
+	else 
+		this->instanceData = getDefaultInstanceMatrix();
+
+	HRESULT hr = this->instanceBuffer.Initialize(device, this->instanceData.data(), (UINT)this->instanceData.size());
+	COM_ERROR_IF_FAILED(hr, "Failed to initialize instance buffer for model.");
 }
 
 
@@ -141,12 +198,10 @@ std::vector<Texture> Model::LoadMaterialTextures(aiMaterial* pMaterial, aiTextur
 			{
 				case TextureStorageType::Disk:
 				{
-					//std::string filename = this->directory + '\\' + path.C_Str();
-					std::string filename = path.C_Str();
+					std::string filename = this->directory + '/' + path.C_Str();
+					//std::string filename = path.C_Str();
 					Texture diskTexture(this->device, filename, textureType);
 					materialTextures.emplace_back(diskTexture);
-					filename += '\n';
-					OutputDebugStringA(filename.c_str());
 					break;
 				}
 				case TextureStorageType::EmbeddedCompressed:
@@ -192,7 +247,6 @@ TextureStorageType Model::DetermineTextureStorageType(const aiScene* pScene, aiM
 	{
 		if (pScene->mTextures[0]->mHeight == 0)
 		{
-			OutputDebugStringA("EmbeddedIndexCompressed\n");
 			return TextureStorageType::EmbeddedIndexCompressed;
 		}
 		else
@@ -206,7 +260,6 @@ TextureStorageType Model::DetermineTextureStorageType(const aiScene* pScene, aiM
 	{
 		if (pTex->mHeight == 0)
 		{
-			OutputDebugStringA("EmbeddedCompressed\n");
 			return TextureStorageType::EmbeddedCompressed;
 		}
 		else
@@ -218,7 +271,6 @@ TextureStorageType Model::DetermineTextureStorageType(const aiScene* pScene, aiM
 
 	if (texturePath.find('.') != std::string::npos)
 	{
-		OutputDebugStringA("Disk\n");
 		return TextureStorageType::Disk;
 	}
 

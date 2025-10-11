@@ -16,6 +16,7 @@ public:
 	Mesh(ID3D11Device* device, ID3D11DeviceContext* deviceContext, std::vector<Vertex>& vertices, std::vector<DWORD>& indices, std::vector<Texture> &textures, const DirectX::XMMATRIX &transformMatrix);
 	Mesh(const Mesh& mesh);
 	void Draw();
+	void DrawInstanced(ID3D11Buffer* const* instanceBufferAddressOf, const UINT* instanceBufferStridePtr, UINT instanceCount);
 	const DirectX::XMMATRIX& GetTransformMatrix();
 
 private:
