@@ -38,3 +38,23 @@
 - Integrated **ImGui** to provide an interface for **moving and rotating** individual objects in the scene
 
 ### Instancing vs no instancing
+- **Device**: Intel Core i9-14900K, NVIDIA RTX 5080
+- **Scene**: Textured cubes rendered with and without GPU instancing.
+- **Metric**: Frame time (ms) — lower is better.
+- **Note**: “DNF” (Did Not Finish) indicates that the non-instanced rendering could not complete due to insufficient system memory (models didn’t fit into RAM).
+
+![img](./images/performance.png)
+
+| Number of Cubes | Frame Time (No Instancing) | Frame Time (Instancing) |
+|------------------|----------------------------|--------------------------|
+| 100              | 0.10 ms                   | 0.048 ms                 |
+| 1,000            | 1.12 ms                   | 0.076 ms                 |
+| 1,600            | 2.42 ms                   | 0.086 ms                 |
+| 10,000           | DNF                       | 0.387 ms                 |
+| 100,000          | DNF                       | 3.38 ms                  |
+| 1,000,000        | DNF                       | 30.44 ms                 |
+| 10,000,000       | DNF                       | 296.818 ms               |
+| 25,000,000       | DNF                       | 806.425 ms               |
+| 50,000,000       | DNF                       | 1480.738 ms              |
+
+Also, you may find screenshots of experiments in `images`.
