@@ -22,7 +22,7 @@ public:
     bool Initialize(HWND hwnd, int width, int height);  
     void RenderFrame();
     Camera camera;
-    RenderableGameObject grassBlock;
+    RenderableGameObject sentinels;
     RenderableGameObject sentinel1;
     RenderableGameObject sentinel2;
     RenderableGameObject plane;

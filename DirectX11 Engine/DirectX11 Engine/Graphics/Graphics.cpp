@@ -303,17 +303,17 @@ bool Graphics::InitializeScene()
 		//	return false;
 		if (!plane.Initialize(vertices, indices, textures, XMMatrixIdentity(), this->device.Get(), this->deviceContext.Get(), cb_vertexShader))
 			return false;
-		if (!grassBlock.Initialize("Data/Models/minecraft/grass_block/minecraft_grass_block.glb", this->device.Get(), this->deviceContext.Get(), cb_vertexShader))
+		if (!sentinels.Initialize("Data/Models/sentinel/rq170.glb", this->device.Get(), this->deviceContext.Get(), cb_vertexShader))
 			return false;
 		if (!sentinel1.Initialize("Data/Models/sentinel/rq170.glb", this->device.Get(), this->deviceContext.Get(), cb_vertexShader))
 			return false;
 		if (!sentinel2.Initialize("Data/Models/sentinel/rq170.glb", this->device.Get(), this->deviceContext.Get(), cb_vertexShader))
 			return false;
 
-		//Grass blocks instancing
+		//Sentinels instancing
 		{
-			const int size_x = 100;
-			const int size_y = 100;
+			const int size_x = 50;
+			const int size_y = 50;
 			const int size_z = 1;
 
 			int start_x = -(size_x - 1) / 2;
@@ -324,7 +324,7 @@ bool Graphics::InitializeScene()
 
 			int start_z = -(size_z - 1) / 2;
 			int end_z = (size_z - 1) / 2;
-			std::vector<InstanceMatrixData> grassBlockInstanceMatrices;
+			std::vector<InstanceMatrixData> sentinelsInstanceMatrices;
 
 			for (int x = start_x; x <= end_x; ++x)
 			{
@@ -335,33 +335,34 @@ bool Graphics::InitializeScene()
 						InstanceMatrixData data;
 
 						DirectX::XMVECTOR offset = DirectX::XMVectorSet(
-							(float)x * 4.0f,
-							(float)y * 4.0f + 250.0f,
-							(float)z * 4.0f + 3.0f,
+							(float)x * 15.0f,
+							(float)y * 10.0f - 200.0f,
+							(float)z * 6.0f,
 							1.0f
 						);
 
 						DirectX::XMMATRIX translationMatrix = DirectX::XMMatrixTranslationFromVector(offset);
 
 						data.instanceMatrix = translationMatrix;
-						grassBlockInstanceMatrices.push_back(data);
+						sentinelsInstanceMatrices.push_back(data);
 					}
 				}
 			}
-			grassBlock.SetInstanceData(grassBlockInstanceMatrices, this->device.Get());
+			sentinels.SetInstanceData(sentinelsInstanceMatrices, this->device.Get());
+			sentinels.SetRotation(0.09f, 0.0f, 0.0f);
 		}
 
 		//Plane instancing
 		{
 			std::vector<InstanceMatrixData> planeInstanceMatrix;
 			InstanceMatrixData data;
-			float scale_x = 500.0f;
+			float scale_x = 1000.0f;
 			float scale_y = 1.0f;
-			float scale_z = 500.0f;
+			float scale_z = 1000.0f;
 
 			float loc_x = 0.0f;
 			float loc_y = -5.0f;
-			float loc_z = -52.0f;
+			float loc_z = -500.0f;
 
 			DirectX::XMMATRIX scaleMatrix = DirectX::XMMatrixScaling(scale_x, scale_y, scale_z);
 
@@ -378,7 +379,7 @@ bool Graphics::InitializeScene()
 			InstanceMatrixData data;
 
 			float loc_x = 0.0f;
-			float loc_y = 0.0f;
+			float loc_y = 75.0f;
 			float loc_z = -4.4f;
 
 			data.instanceMatrix = DirectX::XMMatrixTranslation(loc_x, loc_y, loc_z);
@@ -408,7 +409,7 @@ bool Graphics::InitializeScene()
 			sentinel2.SetRotation(0.0f, 0.0f, 0.5f);
 		}
 
-		camera.SetPosition(0.0f, 0.0f, -2.0f);
+		camera.SetPosition(0.0f, 0.0f, -100.0f);
 		camera.SetProjectionValues(90.0f, static_cast<float>(windowWidth) / static_cast<float>(windowHeight), 0.1f, 1000.0f);
 	}
 	catch (COMException &exception)
@@ -422,7 +423,7 @@ bool Graphics::InitializeScene()
 
 void Graphics::RenderFrame()
 {
-	//float backgroundColor[] = { 0.424f, 0.839f, 0.71f, 1.0f };
+	//float backgroundColor[] = { 0.0f, 1.0f, 1.0f, 1.0f };
 	float backgroundColor[] = {0.0f, 0.0f, 0.0f, 1.0f};
 	this->deviceContext->ClearRenderTargetView(this->renderTargetView.Get(), backgroundColor);
 	this->deviceContext->ClearDepthStencilView(this->depthStencilView.Get(), D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, 1.0f, 0);
@@ -442,10 +443,10 @@ void Graphics::RenderFrame()
 	static float alpha = 1.0f;
 	{
 		this->plane.Draw(camera.GetViewMatrix() * camera.GetProjectionMatrix());
-		this->grassBlock.Draw(camera.GetViewMatrix() * camera.GetProjectionMatrix());
+		this->sentinels.Draw(camera.GetViewMatrix() * camera.GetProjectionMatrix());
 
 		this->sentinel1.SetPosition(translationOffset[0], translationOffset[1], translationOffset[2]);
-		this->sentinel1.SetRotation(rotationOffset[0], rotationOffset[1], rotationOffset[2]);
+		this->sentinel1.SetRotation(rotationOffset[0] + 0.09f, rotationOffset[1], rotationOffset[2]);
 		this->sentinel1.Draw(camera.GetViewMatrix() * camera.GetProjectionMatrix());
 		this->sentinel2.Draw(camera.GetViewMatrix() * camera.GetProjectionMatrix());
 	}
@@ -458,8 +459,8 @@ void Graphics::RenderFrame()
 	ImGui::NewFrame();
 	
 	ImGui::Begin("Model");
-	ImGui::DragFloat3("coords", translationOffset, 0.1f, -10.0f, 10.0f);
-	ImGui::DragFloat3("rotation", rotationOffset, 0.1f, -10.0f, 10.0f);
+	ImGui::DragFloat3("coords", translationOffset, 1.0f, -1000.0f, 1000.0f);
+	ImGui::DragFloat3("rotation", rotationOffset, 0.01f, -XM_2PI, XM_2PI);
 	ImGui::End();
 	ImGui::Render();
 	ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());
