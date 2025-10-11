@@ -4,7 +4,13 @@
 //constrant buffer, vertex shader
 struct CB_VS_vertexShader
 {
-	DirectX::XMFLOAT4X4 mat;
+	DirectX::XMMATRIX mat;
+};
+
+
+struct CB_PS_pixelShader
+{
+	float alpha = 1.0f;
 };
 
 

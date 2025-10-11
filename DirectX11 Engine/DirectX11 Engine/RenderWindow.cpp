@@ -7,10 +7,11 @@ bool RenderWindow::Initialize(WindowContainer* pWindowContainer, HINSTANCE hInst
 	this->width = width;
 	this->height = height;
 	this->window_title = window_title;
-	this->window_title_wide = StringConverter::StringToWide(this->window_title);
+	this->window_title_wide = StringHelper::StringToWide(this->window_title);
 	this->window_class = window_class;
-	this->window_class_wide = StringConverter::StringToWide(this->window_class);
+	this->window_class_wide = StringHelper::StringToWide(this->window_class);
 
+	SetProcessDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2);
 	this->RegisterWindowClass();
 
 	int centerScreenX = GetSystemMetrics(SM_CXSCREEN) / 2 - this->width / 2;
@@ -25,7 +26,7 @@ bool RenderWindow::Initialize(WindowContainer* pWindowContainer, HINSTANCE hInst
 	this->handle = CreateWindowEx(0,	                 //Extended Windows style
 		this->window_class_wide.c_str(),				 //Window class name
 		this->window_title_wide.c_str(),				 //Window Title
-		//WS_CAPTION | WS_MINIMIZEBOX | WS_SYSMENU,		 //Windows style
+		//S_CAPTION | WS_MINIMIZEBOX | WS_SYSMENU,		 //Windows style
 		WS_OVERLAPPEDWINDOW,		 //Windows style
 		wr.left,									     //Window X Position
 		wr.top,										     //Window Y Position
