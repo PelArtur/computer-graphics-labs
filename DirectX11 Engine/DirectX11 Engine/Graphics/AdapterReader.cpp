@@ -35,5 +35,10 @@ std::vector<AdapterData> AdapterReader::GetAdapters()
 		adapters.push_back(AdapterData(pAdapter));
 		index += 1;
 	}
+
+	std::sort(adapters.begin(), adapters.end(), [](const AdapterData& a, const AdapterData& b)
+	{
+		return a.description.DedicatedVideoMemory > b.description.DedicatedVideoMemory;
+	});
 	return adapters;
 }
