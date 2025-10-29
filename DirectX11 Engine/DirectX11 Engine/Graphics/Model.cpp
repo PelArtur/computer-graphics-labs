@@ -51,7 +51,8 @@ void Model::Draw(const XMMATRIX& worldMatrix, const XMMATRIX& viewProjectionMatr
 
 	for (int i = 0; i < meshes.size(); i++)
 	{
-		this->cb_vertexShader->data.mat = meshes[i].GetTransformMatrix() * WVP;
+		this->cb_vertexShader->data.wvpMatrix = meshes[i].GetTransformMatrix() * WVP;
+		this->cb_vertexShader->data.worldMatrix = meshes[i].GetTransformMatrix() * worldMatrix;
 		this->cb_vertexShader->ApplyChanges();
 
 		if (this->GetInstanceCount() == 0)
@@ -96,6 +97,7 @@ bool Model::LoadModel(const std::string& filePath)
 {
 	this->directory = StringHelper::GetDirectoryFromPath(filePath);
 	Assimp::Importer importer;
+	OutputDebugStringA(filePath.c_str());
 
 	const aiScene* pScene = importer.ReadFile(filePath,
 		aiProcess_Triangulate | aiProcess_ConvertToLeftHanded);
@@ -137,6 +139,10 @@ Mesh Model::ProcessMesh(aiMesh* mesh, const aiScene* scene, const XMMATRIX& tran
 		vertex.pos.x = mesh->mVertices[i].x;
 		vertex.pos.y = mesh->mVertices[i].y;
 		vertex.pos.z = mesh->mVertices[i].z;
+
+		vertex.normal.x = mesh->mNormals[i].x;
+		vertex.normal.y = mesh->mNormals[i].y;
+		vertex.normal.z = mesh->mNormals[i].z;
 
 		if (mesh->mTextureCoords[0])
 		{

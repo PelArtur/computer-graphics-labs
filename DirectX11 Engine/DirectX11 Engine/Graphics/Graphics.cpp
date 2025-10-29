@@ -190,6 +190,7 @@ bool Graphics::InitializeShaders()
 	{
 		{ "POSITION", 0, DXGI_FORMAT::DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D11_INPUT_CLASSIFICATION::D3D11_INPUT_PER_VERTEX_DATA, 0 },
 		{ "TEXCOORD", 0, DXGI_FORMAT::DXGI_FORMAT_R32G32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_CLASSIFICATION::D3D11_INPUT_PER_VERTEX_DATA, 0 },
+		{ "NORMAL", 0, DXGI_FORMAT::DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_CLASSIFICATION::D3D11_INPUT_PER_VERTEX_DATA, 0 },
 		//{ "INSTANCEOFFSET", 0, DXGI_FORMAT::DXGI_FORMAT_R32G32B32_FLOAT, 1, 0, D3D11_INPUT_CLASSIFICATION::D3D11_INPUT_PER_INSTANCE_DATA, 1 },
 
 		{ "INSTANCE_MAT", 0, DXGI_FORMAT::DXGI_FORMAT_R32G32B32A32_FLOAT, 1, 0, D3D11_INPUT_CLASSIFICATION::D3D11_INPUT_PER_INSTANCE_DATA, 1 },
@@ -222,8 +223,11 @@ bool Graphics::InitializeScene()
 		HRESULT hr = this->cb_vertexShader.Initialize(this->device.Get(), this->deviceContext.Get());
 		COM_ERROR_IF_FAILED(hr, "Failed to initialize constant buffer.");
 
-		hr = this->cb_pixelShader.Initialize(this->device.Get(), this->deviceContext.Get());
+		hr = this->cb_ps_light.Initialize(this->device.Get(), this->deviceContext.Get());
 		COM_ERROR_IF_FAILED(hr, "Failed to initialize constant buffer.");
+
+		this->cb_ps_light.data.ambientLightColor = XMFLOAT3(1.0f, 1.0f, 1.0f);
+		this->cb_ps_light.data.ambientLightStrength = 1.0f;
 
 		hr = this->psConstantBuffer.Initialize(this->device.Get(), this->deviceContext.Get());
 		COM_ERROR_IF_FAILED(hr, "Failed to initialize voronoise pixel shader constant buffer.");
@@ -246,35 +250,35 @@ bool Graphics::InitializeScene()
 		};
 
 		std::vector<Vertex> vertices = {
-			Vertex(-0.5f, -0.5f, 0.0f, 0.0f, 1.0f),
-			Vertex(-0.5f,  0.5f, 0.0f, 0.0f, 0.0f),
-			Vertex(0.5f,  0.5f, 0.0f, 1.0f, 0.0f),
-			Vertex(0.5f, -0.5f, 0.0f, 1.0f, 1.0f),
+			Vertex(-0.5f, -0.5f, 0.0f, 0.0f, 1.0f, 1.0f, 1.0f, 1.0f),
+			Vertex(-0.5f,  0.5f, 0.0f, 0.0f, 0.0f, 1.0f, 1.0f, 1.0f),
+			Vertex(0.5f,  0.5f, 0.0f, 1.0f, 0.0f, 1.0f, 1.0f, 1.0f),
+			Vertex(0.5f, -0.5f, 0.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f),
 
-			Vertex(0.5f, -0.5f, 0.0f, 0.0f, 1.0f),
-			Vertex(0.5f,  0.5f, 0.0f, 0.0f, 0.0f),
-			Vertex(0.5f,  0.5f, 1.0f, 1.0f, 0.0f),
-			Vertex(0.5f, -0.5f, 1.0f, 1.0f, 1.0f),
+			Vertex(0.5f, -0.5f, 0.0f, 0.0f, 1.0f, 1.0f, 1.0f, 1.0f),
+			Vertex(0.5f,  0.5f, 0.0f, 0.0f, 0.0f, 1.0f, 1.0f, 1.0f),
+			Vertex(0.5f,  0.5f, 1.0f, 1.0f, 0.0f, 1.0f, 1.0f, 1.0f),
+			Vertex(0.5f, -0.5f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f),
 
-			Vertex(0.5f, -0.5f, 1.0f, 0.0f, 1.0f),
-			Vertex(0.5f,  0.5f, 1.0f, 0.0f, 0.0f),
-			Vertex(-0.5f, -0.5f, 1.0f, 1.0f, 1.0f),
-			Vertex(-0.5f,  0.5f, 1.0f, 1.0f, 0.0f),
+			Vertex(0.5f, -0.5f, 1.0f, 0.0f, 1.0f, 1.0f, 1.0f, 1.0f),
+			Vertex(0.5f,  0.5f, 1.0f, 0.0f, 0.0f, 1.0f, 1.0f, 1.0f),
+			Vertex(-0.5f, -0.5f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f),
+			Vertex(-0.5f,  0.5f, 1.0f, 1.0f, 0.0f, 1.0f, 1.0f, 1.0f),
 
-			Vertex(-0.5f, -0.5f, 1.0f, 0.0f, 1.0f),
-			Vertex(-0.5f,  0.5f, 1.0f, 0.0f, 0.0f),
-			Vertex(-0.5f, -0.5f, 0.0f, 1.0f, 1.0f),
-			Vertex(-0.5f,  0.5f, 0.0f, 1.0f, 0.0f),
+			Vertex(-0.5f, -0.5f, 1.0f, 0.0f, 1.0f, 1.0f, 1.0f, 1.0f),
+			Vertex(-0.5f,  0.5f, 1.0f, 0.0f, 0.0f, 1.0f, 1.0f, 1.0f),
+			Vertex(-0.5f, -0.5f, 0.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f),
+			Vertex(-0.5f,  0.5f, 0.0f, 1.0f, 0.0f, 1.0f, 1.0f, 1.0f),
 
-			Vertex(-0.5f,  0.5f, 0.0f, 0.0f, 1.0f),
-			Vertex(-0.5f,  0.5f, 1.0f, 0.0f, 0.0f),
-			Vertex(0.5f,  0.5f, 1.0f, 1.0f, 0.0f),
-			Vertex(0.5f,  0.5f, 0.0f, 1.0f, 1.0f),
+			Vertex(-0.5f,  0.5f, 0.0f, 0.0f, 1.0f, 1.0f, 1.0f, 1.0f),
+			Vertex(-0.5f,  0.5f, 1.0f, 0.0f, 0.0f, 1.0f, 1.0f, 1.0f),
+			Vertex(0.5f,  0.5f, 1.0f, 1.0f, 0.0f, 1.0f, 1.0f, 1.0f),
+			Vertex(0.5f,  0.5f, 0.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f),
 
-			Vertex(-0.5f, -0.5f, 1.0f, 0.0f, 1.0f),
-			Vertex(-0.5f, -0.5f, 0.0f, 0.0f, 0.0f),
-			Vertex(0.5f, -0.5f, 1.0f, 1.0f, 1.0f),
-			Vertex(0.5f, -0.5f, 0.0f, 1.0f, 0.0f)
+			Vertex(-0.5f, -0.5f, 1.0f, 0.0f, 1.0f, 1.0f, 1.0f, 1.0f),
+			Vertex(-0.5f, -0.5f, 0.0f, 0.0f, 0.0f, 1.0f, 1.0f, 1.0f),
+			Vertex(0.5f, -0.5f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f),
+			Vertex(0.5f, -0.5f, 0.0f, 1.0f, 0.0f, 1.0f, 1.0f, 1.0f)
 		};
 
 		std::vector<DWORD> indices = {
@@ -423,6 +427,9 @@ bool Graphics::InitializeScene()
 
 void Graphics::RenderFrame()
 {
+	this->cb_ps_light.ApplyChanges();
+	this->deviceContext->PSSetConstantBuffers(0, 1, this->cb_ps_light.GetAddressOf());
+
 	//float backgroundColor[] = { 0.0f, 1.0f, 1.0f, 1.0f };
 	float backgroundColor[] = {0.0f, 0.0f, 0.0f, 1.0f};
 	this->deviceContext->ClearRenderTargetView(this->renderTargetView.Get(), backgroundColor);
@@ -442,13 +449,13 @@ void Graphics::RenderFrame()
 	static float rotationOffset[3] = { 0, 0, 0 };
 	static float alpha = 1.0f;
 	{
-		this->plane.Draw(camera.GetViewMatrix() * camera.GetProjectionMatrix());
-		this->sentinels.Draw(camera.GetViewMatrix() * camera.GetProjectionMatrix());
+		//this->plane.Draw(camera.GetViewMatrix() * camera.GetProjectionMatrix());
+		//this->sentinels.Draw(camera.GetViewMatrix() * camera.GetProjectionMatrix());
 
 		this->sentinel1.SetPosition(translationOffset[0], translationOffset[1], translationOffset[2]);
 		this->sentinel1.SetRotation(rotationOffset[0] + 0.09f, rotationOffset[1], rotationOffset[2]);
 		this->sentinel1.Draw(camera.GetViewMatrix() * camera.GetProjectionMatrix());
-		this->sentinel2.Draw(camera.GetViewMatrix() * camera.GetProjectionMatrix());
+		//this->sentinel2.Draw(camera.GetViewMatrix() * camera.GetProjectionMatrix());
 	}
 
 	//FPS counter
@@ -461,6 +468,8 @@ void Graphics::RenderFrame()
 	ImGui::Begin("Model");
 	ImGui::DragFloat3("coords", translationOffset, 1.0f, -1000.0f, 1000.0f);
 	ImGui::DragFloat3("rotation", rotationOffset, 0.01f, -XM_2PI, XM_2PI);
+	ImGui::DragFloat3("Ambient Light Color", &this->cb_ps_light.data.ambientLightColor.x, 0.01f, 0.0f, 1.0f);
+	ImGui::DragFloat("Ambient Light Strength", &this->cb_ps_light.data.ambientLightStrength, 0.01f, 0.0f, 1.0f);
 	ImGui::End();
 	ImGui::Render();
 	ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());

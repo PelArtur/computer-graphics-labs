@@ -4,13 +4,15 @@
 //constrant buffer, vertex shader
 struct CB_VS_vertexShader
 {
-	DirectX::XMMATRIX mat;
+	DirectX::XMMATRIX wvpMatrix;
+	DirectX::XMMATRIX worldMatrix;
 };
 
 
-struct CB_PS_pixelShader
+struct CB_PS_light
 {
-	float alpha = 1.0f;
+	DirectX::XMFLOAT3 ambientLightColor;
+	float ambientLightStrength;
 };
 
 

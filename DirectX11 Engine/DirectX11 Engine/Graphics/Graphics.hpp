@@ -45,7 +45,7 @@ private:
     PixelShader warpShader;
     
     ConstantBuffer<CB_VS_vertexShader> cb_vertexShader;
-    ConstantBuffer<CB_PS_pixelShader> cb_pixelShader;
+    ConstantBuffer<CB_PS_light> cb_ps_light;
     ConstantBuffer<Voronoise_pixelShader> psConstantBuffer;
     ConstantBuffer<Warp_pixelShader> warpConstantBuffer;
 
