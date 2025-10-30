@@ -3,6 +3,7 @@
 #include "Shaders.hpp"  
 #include "Camera.hpp"
 #include "RenderableGameObject.hpp"
+#include "Light.hpp"
 #include "../Timer.hpp"
 
 //fonts 
@@ -26,6 +27,7 @@ public:
     RenderableGameObject sentinel1;
     RenderableGameObject sentinel2;
     RenderableGameObject plane;
+    Light light;
 
 private:  
     bool InitializeDirectX(HWND hwnd);  
@@ -41,6 +43,7 @@ private:
     VertexShader vertexShader;  
 
     PixelShader pixelShader;
+    PixelShader pixelShader_nolight;
     PixelShader voronoiseShader;
     PixelShader warpShader;
     

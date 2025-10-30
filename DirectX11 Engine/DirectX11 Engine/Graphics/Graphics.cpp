@@ -207,6 +207,8 @@ bool Graphics::InitializeShaders()
 		return false;
 	if (!pixelShader.Initialize(device, GetExecutableFolder() + L"pixelShader.cso"))
 		return false;
+	if (!pixelShader_nolight.Initialize(device, GetExecutableFolder() + L"pixelShader_nolight.cso"))
+		return false;
 	if (!voronoiseShader.Initialize(device, GetExecutableFolder() + L"voronoisePixelShader.cso"))
 		return false;
 	if (!warpShader.Initialize(device, GetExecutableFolder() + L"WarpEffectPS.cso"))
@@ -301,10 +303,6 @@ bool Graphics::InitializeScene()
 		textures.emplace_back(this->device.Get(), "Data/Textures/grid.jpg", aiTextureType::aiTextureType_DIFFUSE);
 
 		//Initialize Model
-		//if (!gameObject.Initialize("Data/Models/roblox_guy/source/RBLXTriGuard.fbx", this->device.Get(), this->deviceContext.Get(), cb_vertexShader))
-		//	return false;
-		//if (!gameObject.Initialize("Data/Models/sentinel/rq170.glb", this->device.Get(), this->deviceContext.Get(), cb_vertexShader))
-		//	return false;
 		if (!plane.Initialize(vertices, indices, textures, XMMatrixIdentity(), this->device.Get(), this->deviceContext.Get(), cb_vertexShader))
 			return false;
 		if (!sentinels.Initialize("Data/Models/sentinel/rq170.glb", this->device.Get(), this->deviceContext.Get(), cb_vertexShader))
@@ -312,6 +310,8 @@ bool Graphics::InitializeScene()
 		if (!sentinel1.Initialize("Data/Models/sentinel/rq170.glb", this->device.Get(), this->deviceContext.Get(), cb_vertexShader))
 			return false;
 		if (!sentinel2.Initialize("Data/Models/sentinel/rq170.glb", this->device.Get(), this->deviceContext.Get(), cb_vertexShader))
+			return false;
+		if (!light.Initialize(this->device.Get(), this->deviceContext.Get(), cb_vertexShader))
 			return false;
 
 		//Sentinels instancing
@@ -427,6 +427,9 @@ bool Graphics::InitializeScene()
 
 void Graphics::RenderFrame()
 {
+	this->cb_ps_light.data.dynamicLightColor = light.lightColor;
+	this->cb_ps_light.data.dynamicLightStrength = light.lightStrength;
+	this->cb_ps_light.data.dynamicLightPosition = light.GetPositionFloat3();
 	this->cb_ps_light.ApplyChanges();
 	this->deviceContext->PSSetConstantBuffers(0, 1, this->cb_ps_light.GetAddressOf());
 
@@ -456,6 +459,10 @@ void Graphics::RenderFrame()
 		this->sentinel1.SetRotation(rotationOffset[0] + 0.09f, rotationOffset[1], rotationOffset[2]);
 		this->sentinel1.Draw(camera.GetViewMatrix() * camera.GetProjectionMatrix());
 		//this->sentinel2.Draw(camera.GetViewMatrix() * camera.GetProjectionMatrix());
+	}
+	{
+		this->deviceContext->PSSetShader(pixelShader_nolight.GetShader(), NULL, 0);
+		this->light.Draw(camera.GetViewMatrix() * camera.GetProjectionMatrix());
 	}
 
 	//FPS counter

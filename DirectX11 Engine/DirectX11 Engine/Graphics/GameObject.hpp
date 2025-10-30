@@ -8,10 +8,10 @@ public:
 	const XMFLOAT3& GetPositionFloat3() const;
 	const XMVECTOR& GetRotationVector() const;
 	const XMFLOAT3& GetRotationFloat3() const;
-	const XMVECTOR& GetForwardVector();
-	const XMVECTOR& GetRightVector();
-	const XMVECTOR& GetBackwardVector();
-	const XMVECTOR& GetLeftVector();
+	const XMVECTOR& GetForwardVector(bool omitY = false);
+	const XMVECTOR& GetRightVector(bool omitY = false);
+	const XMVECTOR& GetBackwardVector(bool omitY = false);
+	const XMVECTOR& GetLeftVector(bool omitY = false);
 
 	void SetPosition(const XMVECTOR& pos);
 	void SetPosition(const XMFLOAT3& pos);
@@ -29,6 +29,7 @@ public:
 
 protected:
 	virtual void UpdateMatrix();
+	void UpdateDirectionVectors();
 	virtual void checkPosition();
 	virtual void checkRotation();
 
@@ -48,4 +49,9 @@ protected:
 	XMVECTOR vec_left;
 	XMVECTOR vec_right;
 	XMVECTOR vec_backward;
+
+	XMVECTOR vec_forward_noY;
+	XMVECTOR vec_left_noY;
+	XMVECTOR vec_right_noY;
+	XMVECTOR vec_backward_noY;
 };
