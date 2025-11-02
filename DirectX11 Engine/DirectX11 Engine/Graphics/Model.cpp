@@ -7,7 +7,7 @@ bool Model::Initialize(const std::string& filePath, ID3D11Device* device, ID3D11
 	this->deviceContext = deviceContext;
 	this->cb_vertexShader = &cb_vertexShader;
 	auto defaultInstanceMatrix = getDefaultInstanceMatrix();
-	SetInstanceData(defaultInstanceMatrix, device);
+	//SetInstanceData(defaultInstanceMatrix, device);
 
 	try
 	{
@@ -44,29 +44,42 @@ bool Model::Initialize(std::vector<Vertex>& vertices, std::vector<DWORD>& indice
 }
 
 
+//void Model::Draw(const XMMATRIX& worldMatrix, const XMMATRIX& viewProjectionMatrix)
+//{
+//	this->deviceContext->VSSetConstantBuffers(0, 1, this->cb_vertexShader->GetAddressOf());
+//	XMMATRIX WVP = worldMatrix * viewProjectionMatrix;
+//
+//	for (int i = 0; i < meshes.size(); i++)
+//	{
+//		this->cb_vertexShader->data.wvpMatrix = meshes[i].GetTransformMatrix() * WVP;
+//		this->cb_vertexShader->data.worldMatrix = meshes[i].GetTransformMatrix() * worldMatrix;
+//		this->cb_vertexShader->ApplyChanges();
+//
+//		if (this->GetInstanceCount() == 0)
+//		{
+//			meshes[i].Draw();
+//		}
+//		else
+//		{
+//			meshes[i].DrawInstanced(
+//				this->GetInstanceBufferAddressOf(),
+//				this->GetInstanceBufferStridePtr(),
+//				this->GetInstanceCount()
+//			);
+//		}
+//	}
+//}
+
 void Model::Draw(const XMMATRIX& worldMatrix, const XMMATRIX& viewProjectionMatrix)
 {
 	this->deviceContext->VSSetConstantBuffers(0, 1, this->cb_vertexShader->GetAddressOf());
-	XMMATRIX WVP = worldMatrix * viewProjectionMatrix;
 
 	for (int i = 0; i < meshes.size(); i++)
 	{
-		this->cb_vertexShader->data.wvpMatrix = meshes[i].GetTransformMatrix() * WVP;
+		this->cb_vertexShader->data.wvpMatrix = meshes[i].GetTransformMatrix() * worldMatrix * viewProjectionMatrix;
 		this->cb_vertexShader->data.worldMatrix = meshes[i].GetTransformMatrix() * worldMatrix;
 		this->cb_vertexShader->ApplyChanges();
-
-		if (this->GetInstanceCount() == 0)
-		{
-			meshes[i].Draw();
-		}
-		else
-		{
-			meshes[i].DrawInstanced(
-				this->GetInstanceBufferAddressOf(),
-				this->GetInstanceBufferStridePtr(),
-				this->GetInstanceCount()
-			);
-		}
+		meshes[i].Draw();
 	}
 }
 
@@ -205,7 +218,6 @@ std::vector<Texture> Model::LoadMaterialTextures(aiMaterial* pMaterial, aiTextur
 				case TextureStorageType::Disk:
 				{
 					std::string filename = this->directory + '/' + path.C_Str();
-					//std::string filename = path.C_Str();
 					Texture diskTexture(this->device, filename, textureType);
 					materialTextures.emplace_back(diskTexture);
 					break;

@@ -47,8 +47,7 @@ void Engine::Update()
 		}
 	}
 
-	const float cameraSpeed = 0.05f;
-	this->gfx.sentinel2.AdjustRotation(0.0f * dt, 0.001f * dt, 0.0f * dt);
+	const float cameraSpeed = 0.01f;
 
 	if (keyboard.KeyIsPressed('W'))
 	{
@@ -77,7 +76,6 @@ void Engine::Update()
 	if (keyboard.KeyIsPressed('C'))
 	{
 		XMVECTOR lightPosition = this->gfx.camera.GetPositionVector();
-		lightPosition += this->gfx.camera.GetForwardVector();
 		this->gfx.light.SetPosition(lightPosition);
 		this->gfx.light.SetRotation(this->gfx.camera.GetRotationFloat3());
 	}

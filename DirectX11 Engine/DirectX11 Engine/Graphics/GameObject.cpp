@@ -164,6 +164,58 @@ void GameObject::AdjustRotation(float x, float y, float z)
 }
 
 
+void GameObject::SetScale(const XMVECTOR& scl)
+{
+	XMStoreFloat3(&this->scl, scl);
+	this->sclVector = scl;
+	this->UpdateMatrix();
+}
+
+
+void GameObject::SetScale(const XMFLOAT3& scl)
+{
+	this->scl = scl;
+	this->sclVector = XMLoadFloat3(&this->scl);
+	this->UpdateMatrix();
+}
+
+
+void GameObject::SetScale(float x, float y, float z)
+{
+	this->scl = XMFLOAT3(x, y, z);
+	this->sclVector = XMLoadFloat3(&this->scl);
+	this->UpdateMatrix();
+}
+
+
+void GameObject::AdjustScale(const XMVECTOR& scl)
+{
+	this->sclVector += scl;
+	XMStoreFloat3(&this->scl, this->sclVector);
+	this->UpdateMatrix();
+}
+
+
+void GameObject::AdjustScale(const XMFLOAT3& scl)
+{
+	this->scl.x += scl.x;
+	this->scl.y += scl.y;
+	this->scl.z += scl.z;
+	this->sclVector = XMLoadFloat3(&this->scl);
+	this->UpdateMatrix();
+}
+
+
+void GameObject::AdjustScale(float x, float y, float z)
+{
+	this->scl.x += x;
+	this->scl.y += y;
+	this->scl.z += z;
+	this->sclVector = XMLoadFloat3(&this->scl);
+	this->UpdateMatrix();
+}
+
+
 void GameObject::SetLookAtPos(XMFLOAT3 lookAtPos)
 {
 	if (lookAtPos.x == this->pos.x && lookAtPos.y == this->pos.y && lookAtPos.z == this->pos.z)

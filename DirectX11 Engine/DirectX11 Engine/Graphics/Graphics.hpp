@@ -23,9 +23,8 @@ public:
     bool Initialize(HWND hwnd, int width, int height);  
     void RenderFrame();
     Camera camera;
-    RenderableGameObject sentinels;
-    RenderableGameObject sentinel1;
-    RenderableGameObject sentinel2;
+    RenderableGameObject skull;
+    RenderableGameObject skull2;
     RenderableGameObject plane;
     Light light;
 
@@ -34,6 +33,7 @@ private:
     bool InitializeShaders();  
     bool InitializeScene();
     void ShowFPSstats();
+    void ShowCoords(const std::string& objectName, const DirectX::XMVECTOR& position, float screenY);
  
     Microsoft::WRL::ComPtr<ID3D11Device> device;                       //buffers  
     Microsoft::WRL::ComPtr<ID3D11DeviceContext> deviceContext;         //shader resource for shaders  

@@ -28,13 +28,7 @@ struct VS_OUTPUT
 
 
 VS_OUTPUT main(VS_INPUT input)
-{
-    //VS_OUTPUT output;
-    //float4 worldPos = float4(input.inPos + input.instanceOffset, 1.0f);
-    //output.outPosition = mul(worldPos, mat);
-    //output.outTexCoord = input.inTexCoord;
-    //return output;
-    
+{   
     VS_OUTPUT output;
     
     float4x4 instanceWorldMat = float4x4(
@@ -44,9 +38,10 @@ VS_OUTPUT main(VS_INPUT input)
         input.instanceMatRow3
     );
     
-    float4 worldPos = mul(float4(input.inPos, 1.0f), instanceWorldMat);
+    //float4 worldPos = mul(float4(input.inPos, 1.0f), instanceWorldMat);
     
-    output.outPosition = mul(worldPos, wvpMatrix);
+    //output.outPosition = mul(worldPos, wvpMatrix);
+    output.outPosition = mul(float4(input.inPos, 1.0f), wvpMatrix);
     output.outTexCoord = input.inTexCoord;
     output.outNormal   = normalize(mul(float4(input.inNormal, 0.0f), worldMatrix));
     output.outWorldPos = mul(float4(input.inPos, 1.0f), worldMatrix);

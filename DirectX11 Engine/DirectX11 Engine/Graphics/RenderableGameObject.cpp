@@ -35,6 +35,6 @@ void RenderableGameObject::SetInstanceData(const std::vector<InstanceMatrixData>
 
 void RenderableGameObject::UpdateMatrix()
 {
-	this->worldMatrix = XMMatrixRotationRollPitchYaw(this->rot.x, this->rot.y, this->rot.z) * XMMatrixTranslation(this->pos.x, this->pos.y, this->pos.z);
+	this->worldMatrix = XMMatrixScaling(this->scl.x, this->scl.y, this->scl.z) *  XMMatrixRotationRollPitchYaw(this->rot.x, this->rot.y, this->rot.z) * XMMatrixTranslation(this->pos.x, this->pos.y, this->pos.z);
 	this->UpdateDirectionVectors();
 }
