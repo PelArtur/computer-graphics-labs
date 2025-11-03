@@ -25,27 +25,27 @@ const XMFLOAT3& GameObject::GetRotationFloat3() const
 }
 
 
-const XMVECTOR& GameObject::GetForwardVector()
+const XMVECTOR& GameObject::GetForwardVector(bool omitY)
 {
-	return this->vec_forward;
+	return omitY ? this->vec_forward_noY : this->vec_forward;
 }
 
 
-const XMVECTOR& GameObject::GetRightVector()
+const XMVECTOR& GameObject::GetRightVector(bool omitY)
 {
-	return this->vec_right;
+	return omitY ? this->vec_right_noY : this->vec_right;
 }
 
 
-const XMVECTOR& GameObject::GetBackwardVector()
+const XMVECTOR& GameObject::GetBackwardVector(bool omitY)
 {
-	return this->vec_backward;
+	return omitY ? this->vec_backward_noY : this->vec_backward;
 }
 
 
-const XMVECTOR& GameObject::GetLeftVector()
+const XMVECTOR& GameObject::GetLeftVector(bool omitY)
 {
-	return this->vec_left;
+	return omitY ? this->vec_left_noY : this->vec_left;
 }
 
 
@@ -164,6 +164,58 @@ void GameObject::AdjustRotation(float x, float y, float z)
 }
 
 
+void GameObject::SetScale(const XMVECTOR& scl)
+{
+	XMStoreFloat3(&this->scl, scl);
+	this->sclVector = scl;
+	this->UpdateMatrix();
+}
+
+
+void GameObject::SetScale(const XMFLOAT3& scl)
+{
+	this->scl = scl;
+	this->sclVector = XMLoadFloat3(&this->scl);
+	this->UpdateMatrix();
+}
+
+
+void GameObject::SetScale(float x, float y, float z)
+{
+	this->scl = XMFLOAT3(x, y, z);
+	this->sclVector = XMLoadFloat3(&this->scl);
+	this->UpdateMatrix();
+}
+
+
+void GameObject::AdjustScale(const XMVECTOR& scl)
+{
+	this->sclVector += scl;
+	XMStoreFloat3(&this->scl, this->sclVector);
+	this->UpdateMatrix();
+}
+
+
+void GameObject::AdjustScale(const XMFLOAT3& scl)
+{
+	this->scl.x += scl.x;
+	this->scl.y += scl.y;
+	this->scl.z += scl.z;
+	this->sclVector = XMLoadFloat3(&this->scl);
+	this->UpdateMatrix();
+}
+
+
+void GameObject::AdjustScale(float x, float y, float z)
+{
+	this->scl.x += x;
+	this->scl.y += y;
+	this->scl.z += z;
+	this->sclVector = XMLoadFloat3(&this->scl);
+	this->UpdateMatrix();
+}
+
+
 void GameObject::SetLookAtPos(XMFLOAT3 lookAtPos)
 {
 	if (lookAtPos.x == this->pos.x && lookAtPos.y == this->pos.y && lookAtPos.z == this->pos.z)
@@ -194,6 +246,21 @@ void GameObject::SetLookAtPos(XMFLOAT3 lookAtPos)
 void GameObject::UpdateMatrix()
 {
 	assert("UpdateMatrix must be overridden." && 0);
+}
+
+void GameObject::UpdateDirectionVectors()
+{
+	XMMATRIX vecRotationMatrix = XMMatrixRotationRollPitchYaw(this->rot.x, this->rot.y, 0.0f);
+	this->vec_forward = XMVector3TransformCoord(this->DEFAULT_FORWARD_VECTOR, vecRotationMatrix);
+	this->vec_backward = XMVector3TransformCoord(this->DEFAULT_BACKWARD_VECTOR, vecRotationMatrix);
+	this->vec_left = XMVector3TransformCoord(this->DEFAULT_LEFT_VECTOR, vecRotationMatrix);
+	this->vec_right = XMVector3TransformCoord(this->DEFAULT_RIGHT_VECTOR, vecRotationMatrix);
+
+	XMMATRIX vecRotationMatrixnoY = XMMatrixRotationRollPitchYaw(0.0f, this->rot.y, 0.0f);
+	this->vec_forward_noY = XMVector3TransformCoord(this->DEFAULT_FORWARD_VECTOR, vecRotationMatrixnoY);
+	this->vec_backward_noY = XMVector3TransformCoord(this->DEFAULT_BACKWARD_VECTOR, vecRotationMatrixnoY);
+	this->vec_left_noY = XMVector3TransformCoord(this->DEFAULT_LEFT_VECTOR, vecRotationMatrixnoY);
+	this->vec_right_noY = XMVector3TransformCoord(this->DEFAULT_RIGHT_VECTOR, vecRotationMatrixnoY);
 }
 
 

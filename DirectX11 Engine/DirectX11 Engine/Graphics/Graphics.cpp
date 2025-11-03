@@ -5,6 +5,15 @@
 #include <windows.h>
 #include <iomanip>
 
+#define numSkulls 3
+
+static std::vector<float> translationOffset(3 * numSkulls, 0.0f);
+static std::vector<float> rotationOffset(3 * numSkulls, 0.0f);
+static std::vector<float> scaleOffset(3 * numSkulls, 3.0f);
+static bool showLights = true;
+static bool turnOnBlinn = true;
+static int shininess = 32;
+static float lightSphereRadius = 0.05f;
 
 bool Graphics::Initialize(HWND hwnd, int width, int height) 
 {
@@ -190,6 +199,7 @@ bool Graphics::InitializeShaders()
 	{
 		{ "POSITION", 0, DXGI_FORMAT::DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D11_INPUT_CLASSIFICATION::D3D11_INPUT_PER_VERTEX_DATA, 0 },
 		{ "TEXCOORD", 0, DXGI_FORMAT::DXGI_FORMAT_R32G32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_CLASSIFICATION::D3D11_INPUT_PER_VERTEX_DATA, 0 },
+		{ "NORMAL", 0, DXGI_FORMAT::DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_CLASSIFICATION::D3D11_INPUT_PER_VERTEX_DATA, 0 },
 		//{ "INSTANCEOFFSET", 0, DXGI_FORMAT::DXGI_FORMAT_R32G32B32_FLOAT, 1, 0, D3D11_INPUT_CLASSIFICATION::D3D11_INPUT_PER_INSTANCE_DATA, 1 },
 
 		{ "INSTANCE_MAT", 0, DXGI_FORMAT::DXGI_FORMAT_R32G32B32A32_FLOAT, 1, 0, D3D11_INPUT_CLASSIFICATION::D3D11_INPUT_PER_INSTANCE_DATA, 1 },
@@ -205,6 +215,8 @@ bool Graphics::InitializeShaders()
 	if (!vertexShader.Initialize(device, GetExecutableFolder() + L"vertexShader.cso", layout, numElements))
 		return false;
 	if (!pixelShader.Initialize(device, GetExecutableFolder() + L"pixelShader.cso"))
+		return false;
+	if (!pixelShader_nolight.Initialize(device, GetExecutableFolder() + L"pixelShader_nolight.cso"))
 		return false;
 	if (!voronoiseShader.Initialize(device, GetExecutableFolder() + L"voronoisePixelShader.cso"))
 		return false;
@@ -222,8 +234,14 @@ bool Graphics::InitializeScene()
 		HRESULT hr = this->cb_vertexShader.Initialize(this->device.Get(), this->deviceContext.Get());
 		COM_ERROR_IF_FAILED(hr, "Failed to initialize constant buffer.");
 
-		hr = this->cb_pixelShader.Initialize(this->device.Get(), this->deviceContext.Get());
+		hr = this->cb_ps_light.Initialize(this->device.Get(), this->deviceContext.Get());
 		COM_ERROR_IF_FAILED(hr, "Failed to initialize constant buffer.");
+
+		hr = this->cb_ps_lightModelColor.Initialize(this->device.Get(), this->deviceContext.Get());
+		COM_ERROR_IF_FAILED(hr, "Failed to initialize constant buffer.");
+
+		this->cb_ps_light.data.ambientLightColor = XMFLOAT3(1.0f, 1.0f, 1.0f);
+		this->cb_ps_light.data.ambientLightStrength = 0.1f;
 
 		hr = this->psConstantBuffer.Initialize(this->device.Get(), this->deviceContext.Get());
 		COM_ERROR_IF_FAILED(hr, "Failed to initialize voronoise pixel shader constant buffer.");
@@ -246,35 +264,35 @@ bool Graphics::InitializeScene()
 		};
 
 		std::vector<Vertex> vertices = {
-			Vertex(-0.5f, -0.5f, 0.0f, 0.0f, 1.0f),
-			Vertex(-0.5f,  0.5f, 0.0f, 0.0f, 0.0f),
-			Vertex(0.5f,  0.5f, 0.0f, 1.0f, 0.0f),
-			Vertex(0.5f, -0.5f, 0.0f, 1.0f, 1.0f),
+			Vertex(-0.5f, -0.5f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, -1.0f), 
+			Vertex(-0.5f,  0.5f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, -1.0f),
+			Vertex(0.5f,  0.5f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, -1.0f),
+			Vertex(0.5f, -0.5f, 0.0f, 1.0f, 1.0f, 0.0f, 0.0f, -1.0f),
 
-			Vertex(0.5f, -0.5f, 0.0f, 0.0f, 1.0f),
-			Vertex(0.5f,  0.5f, 0.0f, 0.0f, 0.0f),
-			Vertex(0.5f,  0.5f, 1.0f, 1.0f, 0.0f),
-			Vertex(0.5f, -0.5f, 1.0f, 1.0f, 1.0f),
+			Vertex(0.5f, -0.5f, 0.0f, 0.0f, 1.0f, 1.0f, 0.0f, 0.0f),
+			Vertex(0.5f,  0.5f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f),
+			Vertex(0.5f,  0.5f, 1.0f, 1.0f, 0.0f, 1.0f, 0.0f, 0.0f),
+			Vertex(0.5f, -0.5f, 1.0f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f),
 
-			Vertex(0.5f, -0.5f, 1.0f, 0.0f, 1.0f),
-			Vertex(0.5f,  0.5f, 1.0f, 0.0f, 0.0f),
-			Vertex(-0.5f, -0.5f, 1.0f, 1.0f, 1.0f),
-			Vertex(-0.5f,  0.5f, 1.0f, 1.0f, 0.0f),
+			Vertex(0.5f, -0.5f, 1.0f, 0.0f, 1.0f, 0.0f, 0.0f, 1.0f),
+			Vertex(0.5f,  0.5f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f),
+			Vertex(-0.5f, -0.5f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f, 1.0f),
+			Vertex(-0.5f,  0.5f, 1.0f, 1.0f, 0.0f, 0.0f, 0.0f, 1.0f),
 
-			Vertex(-0.5f, -0.5f, 1.0f, 0.0f, 1.0f),
-			Vertex(-0.5f,  0.5f, 1.0f, 0.0f, 0.0f),
-			Vertex(-0.5f, -0.5f, 0.0f, 1.0f, 1.0f),
-			Vertex(-0.5f,  0.5f, 0.0f, 1.0f, 0.0f),
+			Vertex(-0.5f, -0.5f, 1.0f, 0.0f, 1.0f, -1.0f, 0.0f, 0.0f),
+			Vertex(-0.5f,  0.5f, 1.0f, 0.0f, 0.0f, -1.0f, 0.0f, 0.0f),
+			Vertex(-0.5f, -0.5f, 0.0f, 1.0f, 1.0f, -1.0f, 0.0f, 0.0f),
+			Vertex(-0.5f,  0.5f, 0.0f, 1.0f, 0.0f, -1.0f, 0.0f, 0.0f),
 
-			Vertex(-0.5f,  0.5f, 0.0f, 0.0f, 1.0f),
-			Vertex(-0.5f,  0.5f, 1.0f, 0.0f, 0.0f),
-			Vertex(0.5f,  0.5f, 1.0f, 1.0f, 0.0f),
-			Vertex(0.5f,  0.5f, 0.0f, 1.0f, 1.0f),
+			Vertex(-0.5f,  0.5f, 0.0f, 0.0f, 1.0f, 0.0f, 1.0f, 0.0f),
+			Vertex(-0.5f,  0.5f, 1.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f),
+			Vertex(0.5f,  0.5f, 1.0f, 1.0f, 0.0f, 0.0f, 1.0f, 0.0f),
+			Vertex(0.5f,  0.5f, 0.0f, 1.0f, 1.0f, 0.0f, 1.0f, 0.0f),
 
-			Vertex(-0.5f, -0.5f, 1.0f, 0.0f, 1.0f),
-			Vertex(-0.5f, -0.5f, 0.0f, 0.0f, 0.0f),
-			Vertex(0.5f, -0.5f, 1.0f, 1.0f, 1.0f),
-			Vertex(0.5f, -0.5f, 0.0f, 1.0f, 0.0f)
+			Vertex(-0.5f, -0.5f, 1.0f, 0.0f, 1.0f, 0.0f, -1.0f, 0.0f),
+			Vertex(-0.5f, -0.5f, 0.0f, 0.0f, 0.0f, 0.0f, -1.0f, 0.0f),
+			Vertex(0.5f, -0.5f, 1.0f, 1.0f, 1.0f, 0.0f, -1.0f, 0.0f),
+			Vertex(0.5f, -0.5f, 0.0f, 1.0f, 0.0f, 0.0f, -1.0f, 0.0f)
 		};
 
 		std::vector<DWORD> indices = {
@@ -297,119 +315,87 @@ bool Graphics::InitializeScene()
 		textures.emplace_back(this->device.Get(), "Data/Textures/grid.jpg", aiTextureType::aiTextureType_DIFFUSE);
 
 		//Initialize Model
-		//if (!gameObject.Initialize("Data/Models/roblox_guy/source/RBLXTriGuard.fbx", this->device.Get(), this->deviceContext.Get(), cb_vertexShader))
-		//	return false;
-		//if (!gameObject.Initialize("Data/Models/sentinel/rq170.glb", this->device.Get(), this->deviceContext.Get(), cb_vertexShader))
-		//	return false;
 		if (!plane.Initialize(vertices, indices, textures, XMMatrixIdentity(), this->device.Get(), this->deviceContext.Get(), cb_vertexShader))
 			return false;
-		if (!sentinels.Initialize("Data/Models/sentinel/rq170.glb", this->device.Get(), this->deviceContext.Get(), cb_vertexShader))
-			return false;
-		if (!sentinel1.Initialize("Data/Models/sentinel/rq170.glb", this->device.Get(), this->deviceContext.Get(), cb_vertexShader))
-			return false;
-		if (!sentinel2.Initialize("Data/Models/sentinel/rq170.glb", this->device.Get(), this->deviceContext.Get(), cb_vertexShader))
-			return false;
-
-		//Sentinels instancing
 		{
-			const int size_x = 50;
-			const int size_y = 50;
-			const int size_z = 1;
+			const float radius = 5.0f;
 
-			int start_x = -(size_x - 1) / 2;
-			int end_x = (size_x - 1) / 2;
-
-			int start_y = -size_y / 2;
-			int end_y = size_y / 2 - 1;
-
-			int start_z = -(size_z - 1) / 2;
-			int end_z = (size_z - 1) / 2;
-			std::vector<InstanceMatrixData> sentinelsInstanceMatrices;
-
-			for (int x = start_x; x <= end_x; ++x)
+			for(int i = 0; i < numSkulls; ++i)
 			{
-				for (int y = start_y; y <= end_y; ++y)
-				{
-					for (int z = start_z; z <= end_z; ++z)
-					{
-						InstanceMatrixData data;
+				RenderableGameObject skull;
+				if (!skull.Initialize("Data/Models/Skull/stylized_dragon_skull.glb", this->device.Get(), this->deviceContext.Get(), cb_vertexShader))
+					return false;
 
-						DirectX::XMVECTOR offset = DirectX::XMVectorSet(
-							(float)x * 15.0f,
-							(float)y * 10.0f - 200.0f,
-							(float)z * 6.0f,
-							1.0f
-						);
+				float angle = XM_2PI * i / numSkulls;
 
-						DirectX::XMMATRIX translationMatrix = DirectX::XMMatrixTranslationFromVector(offset);
-
-						data.instanceMatrix = translationMatrix;
-						sentinelsInstanceMatrices.push_back(data);
-					}
-				}
+				translationOffset[i * 3] = radius * cosf(angle);
+				translationOffset[i * 3 + 2] = radius * sinf(angle);
+				rotationOffset[i * 3 + 1] = angle;
+				skulls.push_back(skull);
 			}
-			sentinels.SetInstanceData(sentinelsInstanceMatrices, this->device.Get());
-			sentinels.SetRotation(0.09f, 0.0f, 0.0f);
 		}
-
-		//Plane instancing
 		{
-			std::vector<InstanceMatrixData> planeInstanceMatrix;
-			InstanceMatrixData data;
-			float scale_x = 1000.0f;
-			float scale_y = 1.0f;
-			float scale_z = 1000.0f;
+			Light light1;
+			if (!light1.Initialize(this->device.Get(), this->deviceContext.Get(), cb_vertexShader, LightType::Directional))
+				return false;
+			light1.SetScale(0.0f, 0.0f, 0.0f);
+			light1.lightColor = XMFLOAT3(1.0f, 0.5f, 0.0f);
+			light1.lightStrength = 1.0f;
+			this->cb_ps_light.data.lights[0].direction = { 9.0f, -5.0f, 2.54f };
+			dynamicLights.push_back(std::move(light1));
 
-			float loc_x = 0.0f;
-			float loc_y = -5.0f;
-			float loc_z = -500.0f;
+			Light light2;
+			if (!light2.Initialize(this->device.Get(), this->deviceContext.Get(), cb_vertexShader, LightType::Point))
+				return false;
+			light2.lightPosition = XMFLOAT3(0.0f, 2.0f, 0.0f);
+			light2.SetScale(lightSphereRadius, lightSphereRadius, lightSphereRadius);
+			light2.lightColor = XMFLOAT3(0.0f, 0.0f, 1.0f);
+			light1.lightStrength = 2.0f;
+			dynamicLights.push_back(std::move(light2));
 
-			DirectX::XMMATRIX scaleMatrix = DirectX::XMMatrixScaling(scale_x, scale_y, scale_z);
+			Light light3;
+			if (!light3.Initialize(this->device.Get(), this->deviceContext.Get(), cb_vertexShader, LightType::Point))
+				return false;
+			light3.lightPosition = XMFLOAT3(7.7f, 4.0f, 0.0f);
+			light3.SetScale(lightSphereRadius, lightSphereRadius, lightSphereRadius);
+			light3.lightColor = XMFLOAT3(0.0f, 0.0f, 1.0f);
+			light3.lightStrength = 5.0f;
+			dynamicLights.push_back(std::move(light3));
 
-			DirectX::XMMATRIX translationMatrix = DirectX::XMMatrixTranslation(loc_x, loc_y, loc_z);
-
-			data.instanceMatrix = scaleMatrix * translationMatrix;
-			planeInstanceMatrix.push_back(data);
-			plane.SetInstanceData(planeInstanceMatrix, this->device.Get());
+			Light light4;
+			if (!light4.Initialize(this->device.Get(), this->deviceContext.Get(), cb_vertexShader, LightType::Spot))
+				return false;
+			light4.lightPosition = XMFLOAT3(0.0f, 5.0f, 10.0f);
+			light4.SetScale(lightSphereRadius, lightSphereRadius, lightSphereRadius);
+			light4.lightColor = XMFLOAT3(1.0f, 0.0f, 0.0f);
+			light4.lightStrength = 15.0f;
+			this->cb_ps_light.data.lights[3].direction = { -1.03f, -1.8f, -2.04f };
+			dynamicLights.push_back(std::move(light4));
 		}
 
-		//Sentine1 instancing
+		for (size_t i = 0; i < dynamicLights.size() && i < MAX_LIGHTS; ++i)
 		{
-			std::vector<InstanceMatrixData> sentinel1InstanceMatrix;
-			InstanceMatrixData data;
+			const Light& currentLight = dynamicLights[i];
+			LightData& targetData = this->cb_ps_light.data.lights[i];
 
-			float loc_x = 0.0f;
-			float loc_y = 75.0f;
-			float loc_z = -4.4f;
-
-			data.instanceMatrix = DirectX::XMMatrixTranslation(loc_x, loc_y, loc_z);
-			sentinel1InstanceMatrix.push_back(data);
-			sentinel1.SetInstanceData(sentinel1InstanceMatrix, this->device.Get());
+			targetData.type = (int)currentLight.type;
+			targetData.color = currentLight.lightColor;
+			targetData.strength = currentLight.lightStrength;
+			targetData.position = currentLight.GetPositionFloat3();
+			targetData.attenuation_a = 1.0f;
+			targetData.attenuation_b = 0.1f;
+			targetData.attenuation_c = 0.1f;
+			targetData.spotInnerAngle = XMConvertToRadians(15.0f);
+			targetData.spotOuterAngle = XMConvertToRadians(25.0f);
 		}
 
-		//Sentine2 instancing
-		{
-			std::vector<InstanceMatrixData> sentinel2InstanceMatrix;
-			InstanceMatrixData data;
-			float scale_x = 5.0f;
-			float scale_y = 5.0f;
-			float scale_z = 5.0f;
+		this->cb_ps_light.data.lights[1].attenuation_a = 1.0f;
+		this->cb_ps_light.data.lights[1].attenuation_b = 0.0f;
+		this->cb_ps_light.data.lights[1].attenuation_c = 0.0f;
 
-			float loc_x = 0.0f;
-			float loc_y = -100.0f;
-			float loc_z = 40.0f;
-
-			DirectX::XMMATRIX scaleMatrix = DirectX::XMMatrixScaling(scale_x, scale_y, scale_z);
-
-			DirectX::XMMATRIX translationMatrix = DirectX::XMMatrixTranslation(loc_x, loc_y, loc_z);
-
-			data.instanceMatrix = scaleMatrix * translationMatrix;
-			sentinel2InstanceMatrix.push_back(data);
-			sentinel2.SetInstanceData(sentinel2InstanceMatrix, this->device.Get());
-			sentinel2.SetRotation(0.0f, 0.0f, 0.5f);
-		}
-
-		camera.SetPosition(0.0f, 0.0f, -100.0f);
+		plane.SetScale(200.0f, 1.0f, 200.0f);
+		plane.SetPosition(0.0f, -1.0f, -100.0f);
+		camera.SetPosition(0.0f, 0.0f, 0.0f);
 		camera.SetProjectionValues(90.0f, static_cast<float>(windowWidth) / static_cast<float>(windowHeight), 0.1f, 1000.0f);
 	}
 	catch (COMException &exception)
@@ -421,9 +407,48 @@ bool Graphics::InitializeScene()
 }
 
 
+DirectX::XMFLOAT3 GetDirectionFromRotation(const DirectX::XMFLOAT3& rotation)
+{
+	using namespace DirectX;
+
+	float cp = cosf(-rotation.x + 3.14f);
+	float sp = sinf(-rotation.x + 3.14f);
+	float cy = cosf(-rotation.y);
+	float sy = sinf(-rotation.y);
+
+	XMFLOAT3 direction;
+	direction.x = sy * cp;
+	direction.y = -sp;
+	direction.z = -cy * cp;
+
+	XMVECTOR dirVec = XMVector3Normalize(XMLoadFloat3(&direction));
+	XMStoreFloat3(&direction, dirVec);
+	return direction;
+}
+
+
 void Graphics::RenderFrame()
 {
-	//float backgroundColor[] = { 0.0f, 1.0f, 1.0f, 1.0f };
+	this->cb_ps_light.data.cameraPos = camera.GetPositionFloat3();
+	this->cb_ps_light.data.numLights = (int)dynamicLights.size();
+
+	for (size_t i = 0; i < dynamicLights.size() && i < MAX_LIGHTS; ++i)
+	{
+		const Light& currentLight = dynamicLights[i];
+		LightData& targetData = this->cb_ps_light.data.lights[i];
+
+		targetData.type = (int)currentLight.type;
+		targetData.color = currentLight.lightColor;
+		targetData.strength = currentLight.lightStrength;
+		targetData.position = currentLight.GetPositionFloat3();
+		targetData.turnOnBlinn = turnOnBlinn ? 1 : 0;
+		targetData.shininess = shininess;
+		targetData.lightOn = currentLight.lightOn && showLights;
+	}
+
+	this->cb_ps_light.ApplyChanges();
+	this->deviceContext->PSSetConstantBuffers(0, 1, this->cb_ps_light.GetAddressOf());
+
 	float backgroundColor[] = {0.0f, 0.0f, 0.0f, 1.0f};
 	this->deviceContext->ClearRenderTargetView(this->renderTargetView.Get(), backgroundColor);
 	this->deviceContext->ClearDepthStencilView(this->depthStencilView.Get(), D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, 1.0f, 0);
@@ -432,36 +457,106 @@ void Graphics::RenderFrame()
 	this->deviceContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY::D3D10_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 	this->deviceContext->RSSetState(this->rasterizerState.Get());
 	this->deviceContext->OMSetDepthStencilState(this->depthStencilState.Get(), 0);
-	//this->deviceContext->OMSetBlendState(this->blendState.Get(), NULL, 0xFFFFFFFF);
-	this->deviceContext->OMSetBlendState(NULL, NULL, 0xFFFFFFFF);
+	this->deviceContext->OMSetBlendState(this->blendState.Get(), NULL, 0xFFFFFFFF);
 	this->deviceContext->PSSetSamplers(0, 1, this->samplerState.GetAddressOf());
 	this->deviceContext->VSSetShader(vertexShader.GetShader(), NULL, 0);
 	this->deviceContext->PSSetShader(pixelShader.GetShader(), NULL, 0);
 
-	static float translationOffset[3] = { 0, 0, 0 };
-	static float rotationOffset[3] = { 0, 0, 0 };
-	static float alpha = 1.0f;
 	{
 		this->plane.Draw(camera.GetViewMatrix() * camera.GetProjectionMatrix());
-		this->sentinels.Draw(camera.GetViewMatrix() * camera.GetProjectionMatrix());
-
-		this->sentinel1.SetPosition(translationOffset[0], translationOffset[1], translationOffset[2]);
-		this->sentinel1.SetRotation(rotationOffset[0] + 0.09f, rotationOffset[1], rotationOffset[2]);
-		this->sentinel1.Draw(camera.GetViewMatrix() * camera.GetProjectionMatrix());
-		this->sentinel2.Draw(camera.GetViewMatrix() * camera.GetProjectionMatrix());
+		for(int i = 0; i < numSkulls; ++i)
+		{
+			skulls[i].SetPosition(translationOffset[i * 3], translationOffset[i * 3 + 1], translationOffset[i * 3 + 2]);
+			skulls[i].SetRotation(rotationOffset[i * 3], rotationOffset[i * 3 + 1], rotationOffset[i * 3 + 2]);
+			skulls[i].SetScale(scaleOffset[i * 3], scaleOffset[i * 3 + 1], scaleOffset[i * 3 + 2]);
+			skulls[i].Draw(camera.GetViewMatrix() * camera.GetProjectionMatrix());
+		}
+	}
+	{
+		this->deviceContext->PSSetShader(pixelShader_nolight.GetShader(), NULL, 0);
+		this->deviceContext->PSSetConstantBuffers(1, 1, this->cb_ps_lightModelColor.GetAddressOf());
+		for (auto& light : dynamicLights)
+		{
+			if (light.lightOn && showLights)
+			{
+				this->cb_ps_lightModelColor.data.lightColor = light.lightColor;
+				this->cb_ps_lightModelColor.ApplyChanges();
+				if (light.type != LightType::Directional)
+					light.SetScale(lightSphereRadius, lightSphereRadius, lightSphereRadius);
+				light.Draw(camera.GetViewMatrix() * camera.GetProjectionMatrix());
+			}
+		}
 	}
 
 	//FPS counter
 	ShowFPSstats();
+	ShowCoords("Camera", this->camera.GetPositionVector(), 40.0f);
 
 	ImGui_ImplDX11_NewFrame();
 	ImGui_ImplWin32_NewFrame();
 	ImGui::NewFrame();
 	
-	ImGui::Begin("Model");
-	ImGui::DragFloat3("coords", translationOffset, 1.0f, -1000.0f, 1000.0f);
-	ImGui::DragFloat3("rotation", rotationOffset, 0.01f, -XM_2PI, XM_2PI);
+	ImGui::Begin("Models");
+	for (int i = 0; i < numSkulls; ++i)
+	{
+		std::string ind = std::to_string(i + 1);
+		std::string coords = "Coords " + ind;
+		std::string rotation = "Rotation " + ind;
+		std::string scale = "Scale " + ind;
+		ImGui::DragFloat3(coords.c_str(), &translationOffset[i * 3], 0.1f, -1000.0f, 1000.0f);
+		ImGui::DragFloat3(rotation.c_str(), &rotationOffset[i * 3], 0.1f, -1000.0f, 1000.0f);
+		ImGui::DragFloat3(scale.c_str(), &scaleOffset[i * 3], 0.1f, -1000.0f, 1000.0f);
+	}
 	ImGui::End();
+
+	ImGui::Begin("Light general");
+	ImGui::DragFloat3("Ambient Light Color", &this->cb_ps_light.data.ambientLightColor.x, 0.01f, 0.0f, 1.0f);
+	ImGui::DragFloat("Ambient Light Strength", &this->cb_ps_light.data.ambientLightStrength, 0.01f, 0.0f, 1.0f);
+	ImGui::DragInt("Shininess", &shininess, 1, 1, 32);
+	ImGui::DragFloat("Sphere radius", &lightSphereRadius, 0.01f, 0.0f, 100.0f);
+	ImGui::Checkbox("Show lights", &showLights);
+	ImGui::Checkbox("Turn on blinn", &turnOnBlinn);
+	ImGui::End();
+
+	for (size_t i = 0; i < dynamicLights.size(); ++i)
+	{
+		std::string lightName = std::to_string(i + 1) + ". ";
+		if (dynamicLights[i].type == LightType::Directional)
+			lightName += "Directional";
+		else if (dynamicLights[i].type == LightType::Point)
+			lightName += "Point";
+		else if (dynamicLights[i].type == LightType::Spot)
+			lightName += "Spot";
+		else
+			lightName += "Unknown";
+
+		lightName += " light";
+
+		ImGui::Begin(lightName.c_str());
+
+		ImGui::DragFloat3("Color", &this->dynamicLights[i].lightColor.x, 0.01f, 0.0f, 1.0f);
+		ImGui::DragFloat("Strength", &this->dynamicLights[i].lightStrength, 0.1f, 0.0f, 100.0f);
+
+		if (dynamicLights[i].type != LightType::Directional)
+		{
+			ImGui::DragFloat3("Position", &this->dynamicLights[i].lightPosition.x, 0.1f, -1000.0f, 1000.0f);
+			ImGui::DragFloat("Attenuation a", &this->cb_ps_light.data.lights[i].attenuation_a, 0.01f, 0.01f, 100.0f);
+			ImGui::DragFloat("Attenuation b", &this->cb_ps_light.data.lights[i].attenuation_b, 0.01f, 0.0f, 100.0f);
+			ImGui::DragFloat("Attenuation c", &this->cb_ps_light.data.lights[i].attenuation_c, 0.01f, 0.0f, 100.0f);
+		}
+		if (dynamicLights[i].type != LightType::Point)
+		{
+			ImGui::DragFloat3("Light direction", &this->cb_ps_light.data.lights[i].direction.x, 0.01f, -100.0f, 100.0f);
+		}
+		if (dynamicLights[i].type == LightType::Spot)
+		{
+			ImGui::DragFloat("Inner angle", &this->cb_ps_light.data.lights[i].spotInnerAngle, 0.01f, -XM_2PI, XM_2PI);
+			ImGui::DragFloat("Outer angle", &this->cb_ps_light.data.lights[i].spotOuterAngle, 0.01f, -XM_2PI, XM_2PI);
+		}
+		ImGui::Checkbox("Light on", &this->dynamicLights[i].lightOn);
+		ImGui::End();
+	}
+
 	ImGui::Render();
 	ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());
 	this->swapchain->Present(0, NULL); //VSYNC ON -- 1, OFF -- 0
@@ -518,4 +613,33 @@ void Graphics::ShowFPSstats()
 	);
 
 	spriteBatch->End();
+}
+
+
+void Graphics::ShowCoords(const std::string& objectName, const DirectX::XMVECTOR& position, float screenY)
+{
+	DirectX::XMFLOAT3 posFloat3;
+	DirectX::XMStoreFloat3(&posFloat3, position);
+
+	std::stringstream ss_coords;
+
+	ss_coords << objectName << " coords: ";
+	ss_coords << std::fixed << std::setprecision(2);
+
+	ss_coords << "X: " << posFloat3.x;
+	ss_coords << ", Y: " << posFloat3.y;
+	ss_coords << ", Z: " << posFloat3.z;
+
+	std::string coordsString = ss_coords.str();
+
+	this->spriteBatch->Begin();
+
+	this->spriteFont->DrawString(
+		this->spriteBatch.get(),
+		StringHelper::StringToWide(coordsString).c_str(),
+		DirectX::XMFLOAT2(0, screenY),
+		DirectX::Colors::White
+	);
+
+	this->spriteBatch->End();
 }

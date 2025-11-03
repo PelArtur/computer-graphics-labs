@@ -3,6 +3,7 @@
 #include "Shaders.hpp"  
 #include "Camera.hpp"
 #include "RenderableGameObject.hpp"
+#include "Light.hpp"
 #include "../Timer.hpp"
 
 //fonts 
@@ -22,16 +23,16 @@ public:
     bool Initialize(HWND hwnd, int width, int height);  
     void RenderFrame();
     Camera camera;
-    RenderableGameObject sentinels;
-    RenderableGameObject sentinel1;
-    RenderableGameObject sentinel2;
+    std::vector<RenderableGameObject> skulls;
     RenderableGameObject plane;
+    std::vector<Light> dynamicLights;
 
 private:  
     bool InitializeDirectX(HWND hwnd);  
     bool InitializeShaders();  
     bool InitializeScene();
     void ShowFPSstats();
+    void ShowCoords(const std::string& objectName, const DirectX::XMVECTOR& position, float screenY);
  
     Microsoft::WRL::ComPtr<ID3D11Device> device;                       //buffers  
     Microsoft::WRL::ComPtr<ID3D11DeviceContext> deviceContext;         //shader resource for shaders  
@@ -41,11 +42,13 @@ private:
     VertexShader vertexShader;  
 
     PixelShader pixelShader;
+    PixelShader pixelShader_nolight;
     PixelShader voronoiseShader;
     PixelShader warpShader;
     
     ConstantBuffer<CB_VS_vertexShader> cb_vertexShader;
-    ConstantBuffer<CB_PS_pixelShader> cb_pixelShader;
+    ConstantBuffer<CB_PS_LightsData> cb_ps_light;
+    ConstantBuffer<CB_PS_LightColor> cb_ps_lightModelColor;
     ConstantBuffer<Voronoise_pixelShader> psConstantBuffer;
     ConstantBuffer<Warp_pixelShader> warpConstantBuffer;
 

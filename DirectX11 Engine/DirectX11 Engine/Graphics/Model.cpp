@@ -7,7 +7,7 @@ bool Model::Initialize(const std::string& filePath, ID3D11Device* device, ID3D11
 	this->deviceContext = deviceContext;
 	this->cb_vertexShader = &cb_vertexShader;
 	auto defaultInstanceMatrix = getDefaultInstanceMatrix();
-	SetInstanceData(defaultInstanceMatrix, device);
+	//SetInstanceData(defaultInstanceMatrix, device);
 
 	try
 	{
@@ -44,28 +44,42 @@ bool Model::Initialize(std::vector<Vertex>& vertices, std::vector<DWORD>& indice
 }
 
 
+//void Model::Draw(const XMMATRIX& worldMatrix, const XMMATRIX& viewProjectionMatrix)
+//{
+//	this->deviceContext->VSSetConstantBuffers(0, 1, this->cb_vertexShader->GetAddressOf());
+//	XMMATRIX WVP = worldMatrix * viewProjectionMatrix;
+//
+//	for (int i = 0; i < meshes.size(); i++)
+//	{
+//		this->cb_vertexShader->data.wvpMatrix = meshes[i].GetTransformMatrix() * WVP;
+//		this->cb_vertexShader->data.worldMatrix = meshes[i].GetTransformMatrix() * worldMatrix;
+//		this->cb_vertexShader->ApplyChanges();
+//
+//		if (this->GetInstanceCount() == 0)
+//		{
+//			meshes[i].Draw();
+//		}
+//		else
+//		{
+//			meshes[i].DrawInstanced(
+//				this->GetInstanceBufferAddressOf(),
+//				this->GetInstanceBufferStridePtr(),
+//				this->GetInstanceCount()
+//			);
+//		}
+//	}
+//}
+
 void Model::Draw(const XMMATRIX& worldMatrix, const XMMATRIX& viewProjectionMatrix)
 {
 	this->deviceContext->VSSetConstantBuffers(0, 1, this->cb_vertexShader->GetAddressOf());
-	XMMATRIX WVP = worldMatrix * viewProjectionMatrix;
 
 	for (int i = 0; i < meshes.size(); i++)
 	{
-		this->cb_vertexShader->data.mat = meshes[i].GetTransformMatrix() * WVP;
+		this->cb_vertexShader->data.wvpMatrix = meshes[i].GetTransformMatrix() * worldMatrix * viewProjectionMatrix;
+		this->cb_vertexShader->data.worldMatrix = meshes[i].GetTransformMatrix() * worldMatrix;
 		this->cb_vertexShader->ApplyChanges();
-
-		if (this->GetInstanceCount() == 0)
-		{
-			meshes[i].Draw();
-		}
-		else
-		{
-			meshes[i].DrawInstanced(
-				this->GetInstanceBufferAddressOf(),
-				this->GetInstanceBufferStridePtr(),
-				this->GetInstanceCount()
-			);
-		}
+		meshes[i].Draw();
 	}
 }
 
@@ -96,6 +110,7 @@ bool Model::LoadModel(const std::string& filePath)
 {
 	this->directory = StringHelper::GetDirectoryFromPath(filePath);
 	Assimp::Importer importer;
+	OutputDebugStringA(filePath.c_str());
 
 	const aiScene* pScene = importer.ReadFile(filePath,
 		aiProcess_Triangulate | aiProcess_ConvertToLeftHanded);
@@ -137,6 +152,10 @@ Mesh Model::ProcessMesh(aiMesh* mesh, const aiScene* scene, const XMMATRIX& tran
 		vertex.pos.x = mesh->mVertices[i].x;
 		vertex.pos.y = mesh->mVertices[i].y;
 		vertex.pos.z = mesh->mVertices[i].z;
+
+		vertex.normal.x = mesh->mNormals[i].x;
+		vertex.normal.y = mesh->mNormals[i].y;
+		vertex.normal.z = mesh->mNormals[i].z;
 
 		if (mesh->mTextureCoords[0])
 		{
@@ -199,7 +218,6 @@ std::vector<Texture> Model::LoadMaterialTextures(aiMaterial* pMaterial, aiTextur
 				case TextureStorageType::Disk:
 				{
 					std::string filename = this->directory + '/' + path.C_Str();
-					//std::string filename = path.C_Str();
 					Texture diskTexture(this->device, filename, textureType);
 					materialTextures.emplace_back(diskTexture);
 					break;

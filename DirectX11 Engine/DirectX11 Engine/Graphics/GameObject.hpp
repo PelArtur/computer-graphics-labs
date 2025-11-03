@@ -8,10 +8,10 @@ public:
 	const XMFLOAT3& GetPositionFloat3() const;
 	const XMVECTOR& GetRotationVector() const;
 	const XMFLOAT3& GetRotationFloat3() const;
-	const XMVECTOR& GetForwardVector();
-	const XMVECTOR& GetRightVector();
-	const XMVECTOR& GetBackwardVector();
-	const XMVECTOR& GetLeftVector();
+	const XMVECTOR& GetForwardVector(bool omitY = false);
+	const XMVECTOR& GetRightVector(bool omitY = false);
+	const XMVECTOR& GetBackwardVector(bool omitY = false);
+	const XMVECTOR& GetLeftVector(bool omitY = false);
 
 	void SetPosition(const XMVECTOR& pos);
 	void SetPosition(const XMFLOAT3& pos);
@@ -26,16 +26,25 @@ public:
 	void AdjustRotation(const XMFLOAT3& rot);
 	void AdjustRotation(float x, float y, float z);
 	void SetLookAtPos(XMFLOAT3 lookAtPos);
+	void SetScale(const XMVECTOR& scl);
+	void SetScale(const XMFLOAT3& scl);
+	void SetScale(float x, float y, float z);
+	void AdjustScale(const XMVECTOR& scl);
+	void AdjustScale(const XMFLOAT3& scl);
+	void AdjustScale(float x, float y, float z);
 
 protected:
 	virtual void UpdateMatrix();
+	void UpdateDirectionVectors();
 	virtual void checkPosition();
 	virtual void checkRotation();
 
 	XMVECTOR posVector;
 	XMVECTOR rotVector;
+	XMVECTOR sclVector;
 	XMFLOAT3 pos;
 	XMFLOAT3 rot;
+	XMFLOAT3 scl;
 
 	//left handed Y-up format
 	const XMVECTOR DEFAULT_FORWARD_VECTOR = XMVectorSet(0.0f, 0.0f, 1.0f, 0.0f);
@@ -48,4 +57,9 @@ protected:
 	XMVECTOR vec_left;
 	XMVECTOR vec_right;
 	XMVECTOR vec_backward;
+
+	XMVECTOR vec_forward_noY;
+	XMVECTOR vec_left_noY;
+	XMVECTOR vec_right_noY;
+	XMVECTOR vec_backward_noY;
 };
