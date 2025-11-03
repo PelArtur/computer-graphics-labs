@@ -3,7 +3,7 @@
 - **Author**: Artur Pelcharskyi
 - **OS**: Windows 11
 - **API**: DirectX11
-- **Total Late Days**: 3
+- **Total Late Days**: 6
 
 ## Homework 1: A Funny Cube
 - **Late Days**: 2
@@ -43,7 +43,7 @@
 - **Metric**: Frame time (ms) — lower is better.
 - **Note**: “DNF” (Did Not Finish) indicates that the non-instanced rendering could not complete due to insufficient system memory (models didn’t fit into RAM).
 
-![img](./images/performance.png)
+![img](./images/lab2/performance.png)
 
 | Number of Cubes | Frame Time (No Instancing) | Frame Time (Instancing) |
 |------------------|----------------------------|--------------------------|
@@ -58,3 +58,52 @@
 | 50,000,000       | DNF                       | 1480.738 ms              |
 
 Also, you may find screenshots of experiments in `images`.
+
+
+## Homework 3: Lighting
+- **Late Days**: 3
+- **Demo**: [YouTube Video](https://youtu.be/70v7atALN3Q?si=kHRVDou6XmYY8uId)
+
+### Main Tasks
+- Implement three types of lights: **Directional**, **Point**, and **Spot**.
+- Add support for a **Phong** lighting system (disable Blinn when using this mode).
+- Add support for a **Blinn–Phong** lighting system.
+
+### Fixes
+- The application now selects the **adapter with the largest VRAM** instead of the first available one.  
+  This avoids using an integrated GPU when a discrete GPU is available.
+
+### Comments
+The scene consists of **four objects** (three skulls and one plane) and **four lights**:
+- 1 × Directional light (yellow)
+- 2 × Point lights (blue)
+- 1 × Spot light (red)
+
+![img](./images/lab3/main_scene.png)
+
+### ImGui Parameters
+
+#### Models
+- Allows modifying the **rotation**, **scale**, and **position** of each skull model.
+
+#### Light General
+- **Show lights** – Toggles lighting in the scene.  
+  When disabled, only **ambient lighting** remains.  
+  When enabled, all **active lights** contribute to illumination.
+- **Turn on Blinn** – Selects the lighting model:  
+  - On → **Blinn–Phong**  
+  - Off → **Phong**
+- **Sphere radius** – Sets the radius of the sphere used to represent each light source.  
+  (This parameter does *not* affect the actual light’s strength or range.)
+- **Ambient color**, **strength**, and **light shine** behave as expected.
+
+#### Individual Light Settings
+- Each light type (Directional, Point, Spot) exposes its specific parameters,  
+  such as **color**, **strength**, **position**, **attenuation**, and **angle**.
+
+### Notes
+- The **Directional light** sphere is not displayed because this type of light  
+  depends only on direction, not position.
+- **Light spheres** have their own pixel shader that ignores illumination from other sources.  
+  Each sphere’s color matches the light it represents.  
+  The **Spot light** sphere does not visualize the light’s direction.
