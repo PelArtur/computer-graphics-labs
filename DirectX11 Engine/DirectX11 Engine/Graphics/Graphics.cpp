@@ -5,6 +5,15 @@
 #include <windows.h>
 #include <iomanip>
 
+#define numSkulls 3
+
+static std::vector<float> translationOffset(3 * numSkulls, 0.0f);
+static std::vector<float> rotationOffset(3 * numSkulls, 0.0f);
+static std::vector<float> scaleOffset(3 * numSkulls, 3.0f);
+static bool showLights = true;
+static bool turnOnBlinn = true;
+static int shininess = 32;
+static float lightSphereRadius = 0.05f;
 
 bool Graphics::Initialize(HWND hwnd, int width, int height) 
 {
@@ -228,8 +237,11 @@ bool Graphics::InitializeScene()
 		hr = this->cb_ps_light.Initialize(this->device.Get(), this->deviceContext.Get());
 		COM_ERROR_IF_FAILED(hr, "Failed to initialize constant buffer.");
 
+		hr = this->cb_ps_lightModelColor.Initialize(this->device.Get(), this->deviceContext.Get());
+		COM_ERROR_IF_FAILED(hr, "Failed to initialize constant buffer.");
+
 		this->cb_ps_light.data.ambientLightColor = XMFLOAT3(1.0f, 1.0f, 1.0f);
-		this->cb_ps_light.data.ambientLightStrength = 1.0f;
+		this->cb_ps_light.data.ambientLightStrength = 0.1f;
 
 		hr = this->psConstantBuffer.Initialize(this->device.Get(), this->deviceContext.Get());
 		COM_ERROR_IF_FAILED(hr, "Failed to initialize voronoise pixel shader constant buffer.");
@@ -305,18 +317,84 @@ bool Graphics::InitializeScene()
 		//Initialize Model
 		if (!plane.Initialize(vertices, indices, textures, XMMatrixIdentity(), this->device.Get(), this->deviceContext.Get(), cb_vertexShader))
 			return false;
-		if (!skull.Initialize("Data/Models/Skull/stylized_dragon_skull.glb", this->device.Get(), this->deviceContext.Get(), cb_vertexShader))
-			return false;
-		if (!skull2.Initialize("Data/Models/Skull/stylized_dragon_skull.glb", this->device.Get(), this->deviceContext.Get(), cb_vertexShader))
-			return false;
-		if (!light.Initialize(this->device.Get(), this->deviceContext.Get(), cb_vertexShader, LightType::Spot))
-			return false;
+		{
+			const float radius = 5.0f;
+
+			for(int i = 0; i < numSkulls; ++i)
+			{
+				RenderableGameObject skull;
+				if (!skull.Initialize("Data/Models/Skull/stylized_dragon_skull.glb", this->device.Get(), this->deviceContext.Get(), cb_vertexShader))
+					return false;
+
+				float angle = XM_2PI * i / numSkulls;
+
+				translationOffset[i * 3] = radius * cosf(angle);
+				translationOffset[i * 3 + 2] = radius * sinf(angle);
+				rotationOffset[i * 3 + 1] = angle;
+				skulls.push_back(skull);
+			}
+		}
+		{
+			Light light1;
+			if (!light1.Initialize(this->device.Get(), this->deviceContext.Get(), cb_vertexShader, LightType::Directional))
+				return false;
+			light1.SetScale(0.0f, 0.0f, 0.0f);
+			light1.lightColor = XMFLOAT3(1.0f, 0.5f, 0.0f);
+			light1.lightStrength = 1.0f;
+			this->cb_ps_light.data.lights[0].direction = { 9.0f, -5.0f, 2.54f };
+			dynamicLights.push_back(std::move(light1));
+
+			Light light2;
+			if (!light2.Initialize(this->device.Get(), this->deviceContext.Get(), cb_vertexShader, LightType::Point))
+				return false;
+			light2.lightPosition = XMFLOAT3(0.0f, 2.0f, 0.0f);
+			light2.SetScale(lightSphereRadius, lightSphereRadius, lightSphereRadius);
+			light2.lightColor = XMFLOAT3(0.0f, 0.0f, 1.0f);
+			light1.lightStrength = 2.0f;
+			dynamicLights.push_back(std::move(light2));
+
+			Light light3;
+			if (!light3.Initialize(this->device.Get(), this->deviceContext.Get(), cb_vertexShader, LightType::Point))
+				return false;
+			light3.lightPosition = XMFLOAT3(7.7f, 4.0f, 0.0f);
+			light3.SetScale(lightSphereRadius, lightSphereRadius, lightSphereRadius);
+			light3.lightColor = XMFLOAT3(0.0f, 0.0f, 1.0f);
+			light3.lightStrength = 5.0f;
+			dynamicLights.push_back(std::move(light3));
+
+			Light light4;
+			if (!light4.Initialize(this->device.Get(), this->deviceContext.Get(), cb_vertexShader, LightType::Spot))
+				return false;
+			light4.lightPosition = XMFLOAT3(0.0f, 5.0f, 10.0f);
+			light4.SetScale(lightSphereRadius, lightSphereRadius, lightSphereRadius);
+			light4.lightColor = XMFLOAT3(1.0f, 0.0f, 0.0f);
+			light4.lightStrength = 15.0f;
+			this->cb_ps_light.data.lights[3].direction = { -1.03f, -1.8f, -2.04f };
+			dynamicLights.push_back(std::move(light4));
+		}
+
+		for (size_t i = 0; i < dynamicLights.size() && i < MAX_LIGHTS; ++i)
+		{
+			const Light& currentLight = dynamicLights[i];
+			LightData& targetData = this->cb_ps_light.data.lights[i];
+
+			targetData.type = (int)currentLight.type;
+			targetData.color = currentLight.lightColor;
+			targetData.strength = currentLight.lightStrength;
+			targetData.position = currentLight.GetPositionFloat3();
+			targetData.attenuation_a = 1.0f;
+			targetData.attenuation_b = 0.1f;
+			targetData.attenuation_c = 0.1f;
+			targetData.spotInnerAngle = XMConvertToRadians(15.0f);
+			targetData.spotOuterAngle = XMConvertToRadians(25.0f);
+		}
+
+		this->cb_ps_light.data.lights[1].attenuation_a = 1.0f;
+		this->cb_ps_light.data.lights[1].attenuation_b = 0.0f;
+		this->cb_ps_light.data.lights[1].attenuation_c = 0.0f;
 
 		plane.SetScale(200.0f, 1.0f, 200.0f);
 		plane.SetPosition(0.0f, -1.0f, -100.0f);
-		skull.SetScale(1.0f, 1.0f, 1.0f);
-		skull2.SetScale(1.0f, 1.0f, 1.0f);
-		light.SetScale(0.05f, 0.05f, 0.05f);
 		camera.SetPosition(0.0f, 0.0f, 0.0f);
 		camera.SetProjectionValues(90.0f, static_cast<float>(windowWidth) / static_cast<float>(windowHeight), 0.1f, 1000.0f);
 	}
@@ -333,18 +411,16 @@ DirectX::XMFLOAT3 GetDirectionFromRotation(const DirectX::XMFLOAT3& rotation)
 {
 	using namespace DirectX;
 
-	float cp = cosf(-rotation.x + 3.14f); // pitch
+	float cp = cosf(-rotation.x + 3.14f);
 	float sp = sinf(-rotation.x + 3.14f);
-	float cy = cosf(-rotation.y); // yaw
+	float cy = cosf(-rotation.y);
 	float sy = sinf(-rotation.y);
 
-	// Forward direction (assuming -Z is forward)
 	XMFLOAT3 direction;
 	direction.x = sy * cp;
 	direction.y = -sp;
 	direction.z = -cy * cp;
 
-	// Normalize
 	XMVECTOR dirVec = XMVector3Normalize(XMLoadFloat3(&direction));
 	XMStoreFloat3(&direction, dirVec);
 	return direction;
@@ -353,26 +429,23 @@ DirectX::XMFLOAT3 GetDirectionFromRotation(const DirectX::XMFLOAT3& rotation)
 
 void Graphics::RenderFrame()
 {
-	static bool showLight = true;
-	static bool turnOnBlinn = true;
-	static int shininess = 1;
-	this->cb_ps_light.data.lightType = static_cast<int>(light.type);
-	this->cb_ps_light.data.dynamicLightColor = light.lightColor;
-	this->cb_ps_light.data.dynamicLightStrength = showLight ? light.lightStrength : 0.0f;
-	this->cb_ps_light.data.dynamicLightPosition = light.GetPositionFloat3();
-	this->cb_ps_light.data.dynamicLightAttenuation_a = light.attenuation_a;
-	this->cb_ps_light.data.dynamicLightAttenuation_b = light.attenuation_b;
-	this->cb_ps_light.data.dynamicLightAttenuation_c = light.attenuation_c;
-	this->cb_ps_light.data.spotInnerAngle = XMConvertToRadians(15.0f);
-	this->cb_ps_light.data.spotOuterAngle = XMConvertToRadians(25.0f);
-	this->cb_ps_light.data.turnOnBlinn = turnOnBlinn ? 1 : 0;
 	this->cb_ps_light.data.cameraPos = camera.GetPositionFloat3();
-	this->cb_ps_light.data.shininess = shininess;
-	if (light.type != LightType::Directional)
-		this->cb_ps_light.data.dynamicLightDirection = GetDirectionFromRotation(light.GetRotationFloat3());
+	this->cb_ps_light.data.numLights = (int)dynamicLights.size();
 
+	for (size_t i = 0; i < dynamicLights.size() && i < MAX_LIGHTS; ++i)
+	{
+		const Light& currentLight = dynamicLights[i];
+		LightData& targetData = this->cb_ps_light.data.lights[i];
 
-	//this->cb_ps_light.data.dynamicLightDirection = { 1.0f, 0.0f, 0.0f };
+		targetData.type = (int)currentLight.type;
+		targetData.color = currentLight.lightColor;
+		targetData.strength = currentLight.lightStrength;
+		targetData.position = currentLight.GetPositionFloat3();
+		targetData.turnOnBlinn = turnOnBlinn ? 1 : 0;
+		targetData.shininess = shininess;
+		targetData.lightOn = currentLight.lightOn && showLights;
+	}
+
 	this->cb_ps_light.ApplyChanges();
 	this->deviceContext->PSSetConstantBuffers(0, 1, this->cb_ps_light.GetAddressOf());
 
@@ -389,53 +462,100 @@ void Graphics::RenderFrame()
 	this->deviceContext->VSSetShader(vertexShader.GetShader(), NULL, 0);
 	this->deviceContext->PSSetShader(pixelShader.GetShader(), NULL, 0);
 
-	static float translationOffset[3] = { 0, 0, 0 };
-	static float rotationOffset[3] = { 0, 0, 0 };
-	static float scaleOffset[3] = { 1, 1, 1 };
 	{
-		//this->plane.Draw(camera.GetViewMatrix() * camera.GetProjectionMatrix());
-		this->skull.SetPosition(translationOffset[0], translationOffset[1], translationOffset[2]);
-		this->skull.SetRotation(rotationOffset[0], rotationOffset[1], rotationOffset[2]);
-		this->skull.SetScale(scaleOffset[0], scaleOffset[1], scaleOffset[2]);
-		this->skull.Draw(camera.GetViewMatrix() * camera.GetProjectionMatrix());
-		this->skull2.Draw(camera.GetViewMatrix() * camera.GetProjectionMatrix());
+		this->plane.Draw(camera.GetViewMatrix() * camera.GetProjectionMatrix());
+		for(int i = 0; i < numSkulls; ++i)
+		{
+			skulls[i].SetPosition(translationOffset[i * 3], translationOffset[i * 3 + 1], translationOffset[i * 3 + 2]);
+			skulls[i].SetRotation(rotationOffset[i * 3], rotationOffset[i * 3 + 1], rotationOffset[i * 3 + 2]);
+			skulls[i].SetScale(scaleOffset[i * 3], scaleOffset[i * 3 + 1], scaleOffset[i * 3 + 2]);
+			skulls[i].Draw(camera.GetViewMatrix() * camera.GetProjectionMatrix());
+		}
 	}
 	{
-		if (showLight)
+		this->deviceContext->PSSetShader(pixelShader_nolight.GetShader(), NULL, 0);
+		this->deviceContext->PSSetConstantBuffers(1, 1, this->cb_ps_lightModelColor.GetAddressOf());
+		for (auto& light : dynamicLights)
 		{
-			//this->deviceContext->PSSetShader(pixelShader_nolight.GetShader(), NULL, 0);
-			this->light.Draw(camera.GetViewMatrix() * camera.GetProjectionMatrix());
+			if (light.lightOn && showLights)
+			{
+				this->cb_ps_lightModelColor.data.lightColor = light.lightColor;
+				this->cb_ps_lightModelColor.ApplyChanges();
+				if (light.type != LightType::Directional)
+					light.SetScale(lightSphereRadius, lightSphereRadius, lightSphereRadius);
+				light.Draw(camera.GetViewMatrix() * camera.GetProjectionMatrix());
+			}
 		}
 	}
 
 	//FPS counter
 	ShowFPSstats();
 	ShowCoords("Camera", this->camera.GetPositionVector(), 40.0f);
-	ShowCoords("Skull", this->skull.GetPositionVector(), 60.0f);
-	ShowCoords("Light", this->light.GetPositionVector(), 80.0f);
 
 	ImGui_ImplDX11_NewFrame();
 	ImGui_ImplWin32_NewFrame();
 	ImGui::NewFrame();
 	
-	ImGui::Begin("Model");
-	ImGui::DragFloat3("coords", translationOffset, 1.0f, -1000.0f, 1000.0f);
-	ImGui::DragFloat3("rotation", rotationOffset, 0.01f, -XM_2PI, XM_2PI);
-	ImGui::DragFloat3("scale", scaleOffset, 0.1f, 0.1f, 10.0f);
+	ImGui::Begin("Models");
+	for (int i = 0; i < numSkulls; ++i)
+	{
+		std::string ind = std::to_string(i + 1);
+		std::string coords = "Coords " + ind;
+		std::string rotation = "Rotation " + ind;
+		std::string scale = "Scale " + ind;
+		ImGui::DragFloat3(coords.c_str(), &translationOffset[i * 3], 0.1f, -1000.0f, 1000.0f);
+		ImGui::DragFloat3(rotation.c_str(), &rotationOffset[i * 3], 0.1f, -1000.0f, 1000.0f);
+		ImGui::DragFloat3(scale.c_str(), &scaleOffset[i * 3], 0.1f, -1000.0f, 1000.0f);
+	}
 	ImGui::End();
 
-	ImGui::Begin("Light");
+	ImGui::Begin("Light general");
 	ImGui::DragFloat3("Ambient Light Color", &this->cb_ps_light.data.ambientLightColor.x, 0.01f, 0.0f, 1.0f);
 	ImGui::DragFloat("Ambient Light Strength", &this->cb_ps_light.data.ambientLightStrength, 0.01f, 0.0f, 1.0f);
-	ImGui::DragFloat("Attenuation A", &this->light.attenuation_a, 0.01f, 0.01f, 10.0f);
-	ImGui::DragFloat("Attenuation B", &this->light.attenuation_b, 0.01f, 0.0f, 10.0f);
-	ImGui::DragFloat("Attenuation C", &this->light.attenuation_c, 0.01f, 0.0f, 10.0f);
 	ImGui::DragInt("Shininess", &shininess, 1, 1, 32);
-	ImGui::DragFloat("Light Strength", &this->light.lightStrength, 0.5f, 0.0f, 100.0f);
-	ImGui::DragFloat3("Light direction", &this->cb_ps_light.data.dynamicLightDirection.x, 0.01f, -100.0f, 100.0f);
-	ImGui::Checkbox("Show light", &showLight);
+	ImGui::DragFloat("Sphere radius", &lightSphereRadius, 0.01f, 0.0f, 100.0f);
+	ImGui::Checkbox("Show lights", &showLights);
 	ImGui::Checkbox("Turn on blinn", &turnOnBlinn);
 	ImGui::End();
+
+	for (size_t i = 0; i < dynamicLights.size(); ++i)
+	{
+		std::string lightName = std::to_string(i + 1) + ". ";
+		if (dynamicLights[i].type == LightType::Directional)
+			lightName += "Directional";
+		else if (dynamicLights[i].type == LightType::Point)
+			lightName += "Point";
+		else if (dynamicLights[i].type == LightType::Spot)
+			lightName += "Spot";
+		else
+			lightName += "Unknown";
+
+		lightName += " light";
+
+		ImGui::Begin(lightName.c_str());
+
+		ImGui::DragFloat3("Color", &this->dynamicLights[i].lightColor.x, 0.01f, 0.0f, 1.0f);
+		ImGui::DragFloat("Strength", &this->dynamicLights[i].lightStrength, 0.1f, 0.0f, 100.0f);
+
+		if (dynamicLights[i].type != LightType::Directional)
+		{
+			ImGui::DragFloat3("Position", &this->dynamicLights[i].lightPosition.x, 0.1f, -1000.0f, 1000.0f);
+			ImGui::DragFloat("Attenuation a", &this->cb_ps_light.data.lights[i].attenuation_a, 0.01f, 0.01f, 100.0f);
+			ImGui::DragFloat("Attenuation b", &this->cb_ps_light.data.lights[i].attenuation_b, 0.01f, 0.0f, 100.0f);
+			ImGui::DragFloat("Attenuation c", &this->cb_ps_light.data.lights[i].attenuation_c, 0.01f, 0.0f, 100.0f);
+		}
+		if (dynamicLights[i].type != LightType::Point)
+		{
+			ImGui::DragFloat3("Light direction", &this->cb_ps_light.data.lights[i].direction.x, 0.01f, -100.0f, 100.0f);
+		}
+		if (dynamicLights[i].type == LightType::Spot)
+		{
+			ImGui::DragFloat("Inner angle", &this->cb_ps_light.data.lights[i].spotInnerAngle, 0.01f, -XM_2PI, XM_2PI);
+			ImGui::DragFloat("Outer angle", &this->cb_ps_light.data.lights[i].spotOuterAngle, 0.01f, -XM_2PI, XM_2PI);
+		}
+		ImGui::Checkbox("Light on", &this->dynamicLights[i].lightOn);
+		ImGui::End();
+	}
 
 	ImGui::Render();
 	ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());

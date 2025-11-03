@@ -12,3 +12,9 @@ bool Light::Initialize(ID3D11Device* device, ID3D11DeviceContext* deviceContext,
 	this->UpdateMatrix();
 	return true;
 }
+
+void Light::Draw(const XMMATRIX& viewProjectionMatrix)
+{
+	this->SetPosition(lightPosition);
+	model.Draw(this->worldMatrix, viewProjectionMatrix);
+}

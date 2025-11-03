@@ -1,3 +1,9 @@
+cbuffer lightBlobColor : register(b1)
+{
+    float3 lightColor;
+    float padding;
+};
+
 struct PS_INPUT
 {
     float4 inPosition : SV_Position;
@@ -13,5 +19,5 @@ SamplerState objSamplerState : SAMPLER : register(s0);
 float4 main(PS_INPUT input) : SV_Target
 {
     float3 sampleColor = objTexture.Sample(objSamplerState, input.inTexCoord);
-    return float4(sampleColor, 1.0f);
+    return float4(sampleColor * lightColor, 1.0f);
 }

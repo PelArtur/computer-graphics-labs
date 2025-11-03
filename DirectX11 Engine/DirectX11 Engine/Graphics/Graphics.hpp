@@ -23,10 +23,9 @@ public:
     bool Initialize(HWND hwnd, int width, int height);  
     void RenderFrame();
     Camera camera;
-    RenderableGameObject skull;
-    RenderableGameObject skull2;
+    std::vector<RenderableGameObject> skulls;
     RenderableGameObject plane;
-    Light light;
+    std::vector<Light> dynamicLights;
 
 private:  
     bool InitializeDirectX(HWND hwnd);  
@@ -48,7 +47,8 @@ private:
     PixelShader warpShader;
     
     ConstantBuffer<CB_VS_vertexShader> cb_vertexShader;
-    ConstantBuffer<CB_PS_light> cb_ps_light;
+    ConstantBuffer<CB_PS_LightsData> cb_ps_light;
+    ConstantBuffer<CB_PS_LightColor> cb_ps_lightModelColor;
     ConstantBuffer<Voronoise_pixelShader> psConstantBuffer;
     ConstantBuffer<Warp_pixelShader> warpConstantBuffer;
 
