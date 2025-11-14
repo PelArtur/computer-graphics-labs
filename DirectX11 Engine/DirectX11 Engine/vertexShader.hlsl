@@ -40,11 +40,9 @@ VS_OUTPUT main(VS_INPUT input)
     
     //float4 worldPos = mul(float4(input.inPos, 1.0f), instanceWorldMat);
     
-    //output.outPosition = mul(worldPos, wvpMatrix);
     output.outPosition = mul(float4(input.inPos, 1.0f), wvpMatrix);
     output.outTexCoord = input.inTexCoord;
     output.outNormal   = normalize(mul(float4(input.inNormal, 0.0f), worldMatrix));
     output.outWorldPos = mul(float4(input.inPos, 1.0f), worldMatrix);
-    //output.outWorldPos = worldPos;
     return output;
 }

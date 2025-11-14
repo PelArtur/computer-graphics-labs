@@ -17,10 +17,10 @@ static float lightSphereRadius = 0.05f;
 
 bool Graphics::Initialize(HWND hwnd, int width, int height) 
 {
-	this->windowWidth = width;
-	this->windowHeight = height;
-	this->fpsTimer.Start();
-	this->shadersTimer.Start();
+	windowWidth = width;
+	windowHeight = height;
+	fpsTimer.Start();
+	shadersTimer.Start();
 
 	if (!InitializeDirectX(hwnd))
 		return false;
@@ -33,7 +33,7 @@ bool Graphics::Initialize(HWND hwnd, int width, int height)
 	ImGui::CreateContext();
 	ImGuiIO& io = ImGui::GetIO();
 	ImGui_ImplWin32_Init(hwnd);
-	ImGui_ImplDX11_Init(this->device.Get(), this->deviceContext.Get());
+	ImGui_ImplDX11_Init(device.Get(), deviceContext.Get());
 	ImGui::StyleColorsDark();
 
 	return true;
@@ -56,8 +56,8 @@ bool Graphics::InitializeDirectX(HWND hwnd)
 		DXGI_SWAP_CHAIN_DESC scd;
 		ZeroMemory(&scd, sizeof(DXGI_SWAP_CHAIN_DESC));
 
-		scd.BufferDesc.Width = this->windowWidth;
-		scd.BufferDesc.Height = this->windowHeight;
+		scd.BufferDesc.Width = windowWidth;
+		scd.BufferDesc.Height = windowHeight;
 		scd.BufferDesc.RefreshRate.Numerator = 60;
 		scd.BufferDesc.RefreshRate.Denominator = 1;
 		scd.BufferDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
@@ -84,45 +84,45 @@ bool Graphics::InitializeDirectX(HWND hwnd)
 			0,									 //# OF FEATURE LEVELS IN ARRAY
 			D3D11_SDK_VERSION,
 			&scd,                                //Swapchain description
-			this->swapchain.GetAddressOf(),		 //Swapchain Address
-			this->device.GetAddressOf(),		 //Device Address
+			swapchain.GetAddressOf(),		     //Swapchain Address
+			device.GetAddressOf(),		         //Device Address
 			NULL,								 //Supported feature level
-			this->deviceContext.GetAddressOf()); //Device Context Address
+			deviceContext.GetAddressOf());       //Device Context Address
 		COM_ERROR_IF_FAILED(hr, "Failed to create device and swapchain.");
 
 		Microsoft::WRL::ComPtr<ID3D11Texture2D> backBuffer;
-		hr = this->swapchain->GetBuffer(0, __uuidof(ID3D11Texture2D), reinterpret_cast<void**>(backBuffer.GetAddressOf()));
+		hr = swapchain->GetBuffer(0, __uuidof(ID3D11Texture2D), reinterpret_cast<void**>(backBuffer.GetAddressOf()));
 		COM_ERROR_IF_FAILED(hr, "GetBuffer Failed.");
 
-		hr = this->device->CreateRenderTargetView(backBuffer.Get(), NULL, this->renderTargetView.GetAddressOf());
+		hr = device->CreateRenderTargetView(backBuffer.Get(), NULL, renderTargetView.GetAddressOf());
 		COM_ERROR_IF_FAILED(hr, "Failed to create render target view.");
 
 		//Describe our Depth/Stencil Buffer
-		CD3D11_TEXTURE2D_DESC depthStencilTextureDesc(DXGI_FORMAT_D24_UNORM_S8_UINT, this->windowWidth, this->windowHeight);
+		CD3D11_TEXTURE2D_DESC depthStencilTextureDesc(DXGI_FORMAT_D24_UNORM_S8_UINT, windowWidth, windowHeight);
 		depthStencilTextureDesc.MipLevels = 1;
 		depthStencilTextureDesc.BindFlags = D3D11_BIND_DEPTH_STENCIL;
 
-		hr = this->device->CreateTexture2D(&depthStencilTextureDesc, NULL, this->depthStencilBuffer.GetAddressOf());
+		hr = device->CreateTexture2D(&depthStencilTextureDesc, NULL, depthStencilBuffer.GetAddressOf());
 		COM_ERROR_IF_FAILED(hr, "Failed to create depth stencil buffer.");
 
-		hr = this->device->CreateDepthStencilView(this->depthStencilBuffer.Get(), NULL, this->depthStencilView.GetAddressOf());
+		hr = device->CreateDepthStencilView(depthStencilBuffer.Get(), NULL, depthStencilView.GetAddressOf());
 		COM_ERROR_IF_FAILED(hr, "Failed to create depth stencil view.");
 
-		this->deviceContext->OMSetRenderTargets(1, this->renderTargetView.GetAddressOf(), this->depthStencilView.Get());
+		deviceContext->OMSetRenderTargets(1, renderTargetView.GetAddressOf(), depthStencilView.Get());
 
 		//Create depth stencil state
 		CD3D11_DEPTH_STENCIL_DESC depthstencildesc(D3D11_DEFAULT);
 		depthstencildesc.DepthFunc = D3D11_COMPARISON_FUNC::D3D11_COMPARISON_LESS_EQUAL;
 
-		hr = this->device->CreateDepthStencilState(&depthstencildesc, this->depthStencilState.GetAddressOf());
+		hr = device->CreateDepthStencilState(&depthstencildesc, depthStencilState.GetAddressOf());
 		COM_ERROR_IF_FAILED(hr, "Failed to create depth stencil state.");
 
 		//Create and set the Viewport
-		CD3D11_VIEWPORT viewport(0.0f, 0.0f, static_cast<float>(this->windowWidth), static_cast<float>(this->windowHeight));;
-		this->deviceContext->RSSetViewports(1, &viewport);
+		CD3D11_VIEWPORT viewport(0.0f, 0.0f, static_cast<float>(windowWidth), static_cast<float>(windowHeight));;
+		deviceContext->RSSetViewports(1, &viewport);
 
 		CD3D11_RASTERIZER_DESC rasterizerDesc(D3D11_DEFAULT);
-		hr = this->device->CreateRasterizerState(&rasterizerDesc, this->rasterizerState.GetAddressOf());
+		hr = device->CreateRasterizerState(&rasterizerDesc, rasterizerState.GetAddressOf());
 		COM_ERROR_IF_FAILED(hr, "Failed to create rasterizer state.");
 
 		//Create Blend State
@@ -143,18 +143,18 @@ bool Graphics::InitializeDirectX(HWND hwnd)
 
 		blendDesc.RenderTarget[0] = rtbd;
 
-		hr = this->device->CreateBlendState(&blendDesc, this->blendState.GetAddressOf());
+		hr = device->CreateBlendState(&blendDesc, blendState.GetAddressOf());
 		COM_ERROR_IF_FAILED(hr, "Failed to create blend state.");
 
-		spriteBatch = std::make_unique<DirectX::SpriteBatch>(this->deviceContext.Get());
-		spriteFont = std::make_unique<DirectX::SpriteFont>(this->device.Get(), L"Data/Fonts/comic_sans_ms_16");
+		spriteBatch = std::make_unique<DirectX::SpriteBatch>(deviceContext.Get());
+		spriteFont = std::make_unique<DirectX::SpriteFont>(device.Get(), L"Data/Fonts/comic_sans_ms_16");
 
 		//Sample descritption
 		CD3D11_SAMPLER_DESC sampDesc(D3D11_DEFAULT);
 		sampDesc.AddressU = D3D11_TEXTURE_ADDRESS_WRAP;
 		sampDesc.AddressV = D3D11_TEXTURE_ADDRESS_WRAP;
 		sampDesc.AddressW = D3D11_TEXTURE_ADDRESS_WRAP;
-		hr = this->device->CreateSamplerState(&sampDesc, this->samplerState.GetAddressOf()); //Create sampler state
+		hr = device->CreateSamplerState(&sampDesc, samplerState.GetAddressOf()); //Create sampler state
 		COM_ERROR_IF_FAILED(hr, "Failed to create sampler state.");
 	}
 	catch (COMException& exception)
@@ -231,32 +231,32 @@ bool Graphics::InitializeScene()
 	try
 	{
 		//Constant buffers
-		HRESULT hr = this->cb_vertexShader.Initialize(this->device.Get(), this->deviceContext.Get());
+		HRESULT hr = cb_vertexShader.Initialize(device.Get(), deviceContext.Get());
 		COM_ERROR_IF_FAILED(hr, "Failed to initialize constant buffer.");
 
-		hr = this->cb_ps_light.Initialize(this->device.Get(), this->deviceContext.Get());
+		hr = cb_ps_light.Initialize(device.Get(), deviceContext.Get());
 		COM_ERROR_IF_FAILED(hr, "Failed to initialize constant buffer.");
 
-		hr = this->cb_ps_lightModelColor.Initialize(this->device.Get(), this->deviceContext.Get());
+		hr = cb_ps_lightModelColor.Initialize(device.Get(), deviceContext.Get());
 		COM_ERROR_IF_FAILED(hr, "Failed to initialize constant buffer.");
 
-		this->cb_ps_light.data.ambientLightColor = XMFLOAT3(1.0f, 1.0f, 1.0f);
-		this->cb_ps_light.data.ambientLightStrength = 0.1f;
+		cb_ps_light.data.ambientLightColor = XMFLOAT3(1.0f, 1.0f, 1.0f);
+		cb_ps_light.data.ambientLightStrength = 0.1f;
 
-		hr = this->psConstantBuffer.Initialize(this->device.Get(), this->deviceContext.Get());
+		hr = psConstantBuffer.Initialize(device.Get(), deviceContext.Get());
 		COM_ERROR_IF_FAILED(hr, "Failed to initialize voronoise pixel shader constant buffer.");
 
-		hr = this->warpConstantBuffer.Initialize(this->device.Get(), this->deviceContext.Get());
+		hr = warpConstantBuffer.Initialize(device.Get(), deviceContext.Get());
 		COM_ERROR_IF_FAILED(hr, "Failed to initialize warp pixel shader constant buffer.");
 
-		this->psConstantBuffer.data.iResolution = {
+		psConstantBuffer.data.iResolution = {
 			static_cast<float>(windowWidth),
 			static_cast<float>(windowHeight),
 			1.0f / static_cast<float>(windowWidth),
 			1.0f / static_cast<float>(windowHeight)
 		};
 
-		this->warpConstantBuffer.data.iResolution = {
+		warpConstantBuffer.data.iResolution = {
 			static_cast<float>(windowWidth),
 			static_cast<float>(windowHeight),
 			1.0f / static_cast<float>(windowWidth),
@@ -312,10 +312,10 @@ bool Graphics::InitializeScene()
 
 
 		std::vector<Texture> textures;
-		textures.emplace_back(this->device.Get(), "Data/Textures/grid.jpg", aiTextureType::aiTextureType_DIFFUSE);
+		textures.emplace_back(device.Get(), "Data/Textures/grid.jpg", aiTextureType::aiTextureType_DIFFUSE);
 
 		//Initialize Model
-		if (!plane.Initialize(vertices, indices, textures, XMMatrixIdentity(), this->device.Get(), this->deviceContext.Get(), cb_vertexShader))
+		if (!plane.Initialize(vertices, indices, textures, XMMatrixIdentity(), device.Get(), deviceContext.Get(), cb_vertexShader))
 			return false;
 		{
 			const float radius = 5.0f;
@@ -323,7 +323,7 @@ bool Graphics::InitializeScene()
 			for(int i = 0; i < numSkulls; ++i)
 			{
 				RenderableGameObject skull;
-				if (!skull.Initialize("Data/Models/Skull/stylized_dragon_skull.glb", this->device.Get(), this->deviceContext.Get(), cb_vertexShader))
+				if (!skull.Initialize("Data/Models/Skull/stylized_dragon_skull.glb", device.Get(), deviceContext.Get(), cb_vertexShader))
 					return false;
 
 				float angle = XM_2PI * i / numSkulls;
@@ -336,16 +336,16 @@ bool Graphics::InitializeScene()
 		}
 		{
 			Light light1;
-			if (!light1.Initialize(this->device.Get(), this->deviceContext.Get(), cb_vertexShader, LightType::Directional))
+			if (!light1.Initialize(device.Get(), deviceContext.Get(), cb_vertexShader, LightType::Directional))
 				return false;
 			light1.SetScale(0.0f, 0.0f, 0.0f);
 			light1.lightColor = XMFLOAT3(1.0f, 0.5f, 0.0f);
 			light1.lightStrength = 1.0f;
-			this->cb_ps_light.data.lights[0].direction = { 9.0f, -5.0f, 2.54f };
+			cb_ps_light.data.lights[0].direction = { 9.0f, -5.0f, 2.54f };
 			dynamicLights.push_back(std::move(light1));
 
 			Light light2;
-			if (!light2.Initialize(this->device.Get(), this->deviceContext.Get(), cb_vertexShader, LightType::Point))
+			if (!light2.Initialize(device.Get(), deviceContext.Get(), cb_vertexShader, LightType::Point))
 				return false;
 			light2.lightPosition = XMFLOAT3(0.0f, 2.0f, 0.0f);
 			light2.SetScale(lightSphereRadius, lightSphereRadius, lightSphereRadius);
@@ -354,7 +354,7 @@ bool Graphics::InitializeScene()
 			dynamicLights.push_back(std::move(light2));
 
 			Light light3;
-			if (!light3.Initialize(this->device.Get(), this->deviceContext.Get(), cb_vertexShader, LightType::Point))
+			if (!light3.Initialize(device.Get(), deviceContext.Get(), cb_vertexShader, LightType::Point))
 				return false;
 			light3.lightPosition = XMFLOAT3(7.7f, 4.0f, 0.0f);
 			light3.SetScale(lightSphereRadius, lightSphereRadius, lightSphereRadius);
@@ -363,20 +363,20 @@ bool Graphics::InitializeScene()
 			dynamicLights.push_back(std::move(light3));
 
 			Light light4;
-			if (!light4.Initialize(this->device.Get(), this->deviceContext.Get(), cb_vertexShader, LightType::Spot))
+			if (!light4.Initialize(device.Get(), deviceContext.Get(), cb_vertexShader, LightType::Spot))
 				return false;
 			light4.lightPosition = XMFLOAT3(0.0f, 5.0f, 10.0f);
 			light4.SetScale(lightSphereRadius, lightSphereRadius, lightSphereRadius);
 			light4.lightColor = XMFLOAT3(1.0f, 0.0f, 0.0f);
 			light4.lightStrength = 15.0f;
-			this->cb_ps_light.data.lights[3].direction = { -1.03f, -1.8f, -2.04f };
+			cb_ps_light.data.lights[3].direction = { -1.03f, -1.8f, -2.04f };
 			dynamicLights.push_back(std::move(light4));
 		}
 
 		for (size_t i = 0; i < dynamicLights.size() && i < MAX_LIGHTS; ++i)
 		{
 			const Light& currentLight = dynamicLights[i];
-			LightData& targetData = this->cb_ps_light.data.lights[i];
+			LightData& targetData = cb_ps_light.data.lights[i];
 
 			targetData.type = (int)currentLight.type;
 			targetData.color = currentLight.lightColor;
@@ -389,9 +389,9 @@ bool Graphics::InitializeScene()
 			targetData.spotOuterAngle = XMConvertToRadians(25.0f);
 		}
 
-		this->cb_ps_light.data.lights[1].attenuation_a = 1.0f;
-		this->cb_ps_light.data.lights[1].attenuation_b = 0.0f;
-		this->cb_ps_light.data.lights[1].attenuation_c = 0.0f;
+		cb_ps_light.data.lights[1].attenuation_a = 1.0f;
+		cb_ps_light.data.lights[1].attenuation_b = 0.0f;
+		cb_ps_light.data.lights[1].attenuation_c = 0.0f;
 
 		plane.SetScale(200.0f, 1.0f, 200.0f);
 		plane.SetPosition(0.0f, -1.0f, -100.0f);
@@ -429,13 +429,13 @@ DirectX::XMFLOAT3 GetDirectionFromRotation(const DirectX::XMFLOAT3& rotation)
 
 void Graphics::RenderFrame()
 {
-	this->cb_ps_light.data.cameraPos = camera.GetPositionFloat3();
-	this->cb_ps_light.data.numLights = (int)dynamicLights.size();
+	cb_ps_light.data.cameraPos = camera.GetPositionFloat3();
+	cb_ps_light.data.numLights = (int)dynamicLights.size();
 
 	for (size_t i = 0; i < dynamicLights.size() && i < MAX_LIGHTS; ++i)
 	{
 		const Light& currentLight = dynamicLights[i];
-		LightData& targetData = this->cb_ps_light.data.lights[i];
+		LightData& targetData = cb_ps_light.data.lights[i];
 
 		targetData.type = (int)currentLight.type;
 		targetData.color = currentLight.lightColor;
@@ -446,24 +446,24 @@ void Graphics::RenderFrame()
 		targetData.lightOn = currentLight.lightOn && showLights;
 	}
 
-	this->cb_ps_light.ApplyChanges();
-	this->deviceContext->PSSetConstantBuffers(0, 1, this->cb_ps_light.GetAddressOf());
+	cb_ps_light.ApplyChanges();
+	deviceContext->PSSetConstantBuffers(0, 1, cb_ps_light.GetAddressOf());
 
 	float backgroundColor[] = {0.0f, 0.0f, 0.0f, 1.0f};
-	this->deviceContext->ClearRenderTargetView(this->renderTargetView.Get(), backgroundColor);
-	this->deviceContext->ClearDepthStencilView(this->depthStencilView.Get(), D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, 1.0f, 0);
+	deviceContext->ClearRenderTargetView(renderTargetView.Get(), backgroundColor);
+	deviceContext->ClearDepthStencilView(depthStencilView.Get(), D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, 1.0f, 0);
 
-	this->deviceContext->IASetInputLayout(this->vertexShader.GetInputLayout());
-	this->deviceContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY::D3D10_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-	this->deviceContext->RSSetState(this->rasterizerState.Get());
-	this->deviceContext->OMSetDepthStencilState(this->depthStencilState.Get(), 0);
-	this->deviceContext->OMSetBlendState(this->blendState.Get(), NULL, 0xFFFFFFFF);
-	this->deviceContext->PSSetSamplers(0, 1, this->samplerState.GetAddressOf());
-	this->deviceContext->VSSetShader(vertexShader.GetShader(), NULL, 0);
-	this->deviceContext->PSSetShader(pixelShader.GetShader(), NULL, 0);
+	deviceContext->IASetInputLayout(vertexShader.GetInputLayout());
+	deviceContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY::D3D10_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+	deviceContext->RSSetState(rasterizerState.Get());
+	deviceContext->OMSetDepthStencilState(depthStencilState.Get(), 0);
+	deviceContext->OMSetBlendState(blendState.Get(), NULL, 0xFFFFFFFF);
+	deviceContext->PSSetSamplers(0, 1, samplerState.GetAddressOf());
+	deviceContext->VSSetShader(vertexShader.GetShader(), NULL, 0);
+	deviceContext->PSSetShader(pixelShader.GetShader(), NULL, 0);
 
 	{
-		this->plane.Draw(camera.GetViewMatrix() * camera.GetProjectionMatrix());
+		plane.Draw(camera.GetViewMatrix() * camera.GetProjectionMatrix());
 		for(int i = 0; i < numSkulls; ++i)
 		{
 			skulls[i].SetPosition(translationOffset[i * 3], translationOffset[i * 3 + 1], translationOffset[i * 3 + 2]);
@@ -473,14 +473,14 @@ void Graphics::RenderFrame()
 		}
 	}
 	{
-		this->deviceContext->PSSetShader(pixelShader_nolight.GetShader(), NULL, 0);
-		this->deviceContext->PSSetConstantBuffers(1, 1, this->cb_ps_lightModelColor.GetAddressOf());
+		deviceContext->PSSetShader(pixelShader_nolight.GetShader(), NULL, 0);
+		deviceContext->PSSetConstantBuffers(1, 1, cb_ps_lightModelColor.GetAddressOf());
 		for (auto& light : dynamicLights)
 		{
 			if (light.lightOn && showLights)
 			{
-				this->cb_ps_lightModelColor.data.lightColor = light.lightColor;
-				this->cb_ps_lightModelColor.ApplyChanges();
+				cb_ps_lightModelColor.data.lightColor = light.lightColor;
+				cb_ps_lightModelColor.ApplyChanges();
 				if (light.type != LightType::Directional)
 					light.SetScale(lightSphereRadius, lightSphereRadius, lightSphereRadius);
 				light.Draw(camera.GetViewMatrix() * camera.GetProjectionMatrix());
@@ -490,7 +490,7 @@ void Graphics::RenderFrame()
 
 	//FPS counter
 	ShowFPSstats();
-	ShowCoords("Camera", this->camera.GetPositionVector(), 40.0f);
+	ShowCoords("Camera", camera.GetPositionVector(), 40.0f);
 
 	ImGui_ImplDX11_NewFrame();
 	ImGui_ImplWin32_NewFrame();
@@ -510,8 +510,8 @@ void Graphics::RenderFrame()
 	ImGui::End();
 
 	ImGui::Begin("Light general");
-	ImGui::DragFloat3("Ambient Light Color", &this->cb_ps_light.data.ambientLightColor.x, 0.01f, 0.0f, 1.0f);
-	ImGui::DragFloat("Ambient Light Strength", &this->cb_ps_light.data.ambientLightStrength, 0.01f, 0.0f, 1.0f);
+	ImGui::DragFloat3("Ambient Light Color", &cb_ps_light.data.ambientLightColor.x, 0.01f, 0.0f, 1.0f);
+	ImGui::DragFloat("Ambient Light Strength", &cb_ps_light.data.ambientLightStrength, 0.01f, 0.0f, 1.0f);
 	ImGui::DragInt("Shininess", &shininess, 1, 1, 32);
 	ImGui::DragFloat("Sphere radius", &lightSphereRadius, 0.01f, 0.0f, 100.0f);
 	ImGui::Checkbox("Show lights", &showLights);
@@ -534,32 +534,32 @@ void Graphics::RenderFrame()
 
 		ImGui::Begin(lightName.c_str());
 
-		ImGui::DragFloat3("Color", &this->dynamicLights[i].lightColor.x, 0.01f, 0.0f, 1.0f);
-		ImGui::DragFloat("Strength", &this->dynamicLights[i].lightStrength, 0.1f, 0.0f, 100.0f);
+		ImGui::DragFloat3("Color", &dynamicLights[i].lightColor.x, 0.01f, 0.0f, 1.0f);
+		ImGui::DragFloat("Strength", &dynamicLights[i].lightStrength, 0.1f, 0.0f, 100.0f);
 
 		if (dynamicLights[i].type != LightType::Directional)
 		{
-			ImGui::DragFloat3("Position", &this->dynamicLights[i].lightPosition.x, 0.1f, -1000.0f, 1000.0f);
-			ImGui::DragFloat("Attenuation a", &this->cb_ps_light.data.lights[i].attenuation_a, 0.01f, 0.01f, 100.0f);
-			ImGui::DragFloat("Attenuation b", &this->cb_ps_light.data.lights[i].attenuation_b, 0.01f, 0.0f, 100.0f);
-			ImGui::DragFloat("Attenuation c", &this->cb_ps_light.data.lights[i].attenuation_c, 0.01f, 0.0f, 100.0f);
+			ImGui::DragFloat3("Position", &dynamicLights[i].lightPosition.x, 0.1f, -1000.0f, 1000.0f);
+			ImGui::DragFloat("Attenuation a", &cb_ps_light.data.lights[i].attenuation_a, 0.01f, 0.01f, 100.0f);
+			ImGui::DragFloat("Attenuation b", &cb_ps_light.data.lights[i].attenuation_b, 0.01f, 0.0f, 100.0f);
+			ImGui::DragFloat("Attenuation c", &cb_ps_light.data.lights[i].attenuation_c, 0.01f, 0.0f, 100.0f);
 		}
 		if (dynamicLights[i].type != LightType::Point)
 		{
-			ImGui::DragFloat3("Light direction", &this->cb_ps_light.data.lights[i].direction.x, 0.01f, -100.0f, 100.0f);
+			ImGui::DragFloat3("Light direction", &cb_ps_light.data.lights[i].direction.x, 0.01f, -100.0f, 100.0f);
 		}
 		if (dynamicLights[i].type == LightType::Spot)
 		{
-			ImGui::DragFloat("Inner angle", &this->cb_ps_light.data.lights[i].spotInnerAngle, 0.01f, -XM_2PI, XM_2PI);
-			ImGui::DragFloat("Outer angle", &this->cb_ps_light.data.lights[i].spotOuterAngle, 0.01f, -XM_2PI, XM_2PI);
+			ImGui::DragFloat("Inner angle", &cb_ps_light.data.lights[i].spotInnerAngle, 0.01f, -XM_2PI, XM_2PI);
+			ImGui::DragFloat("Outer angle", &cb_ps_light.data.lights[i].spotOuterAngle, 0.01f, -XM_2PI, XM_2PI);
 		}
-		ImGui::Checkbox("Light on", &this->dynamicLights[i].lightOn);
+		ImGui::Checkbox("Light on", &dynamicLights[i].lightOn);
 		ImGui::End();
 	}
 
 	ImGui::Render();
 	ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());
-	this->swapchain->Present(0, NULL); //VSYNC ON -- 1, OFF -- 0
+	swapchain->Present(0, NULL); //VSYNC ON -- 1, OFF -- 0
 }
 
 
@@ -632,14 +632,14 @@ void Graphics::ShowCoords(const std::string& objectName, const DirectX::XMVECTOR
 
 	std::string coordsString = ss_coords.str();
 
-	this->spriteBatch->Begin();
+	spriteBatch->Begin();
 
-	this->spriteFont->DrawString(
-		this->spriteBatch.get(),
+	spriteFont->DrawString(
+		spriteBatch.get(),
 		StringHelper::StringToWide(coordsString).c_str(),
 		DirectX::XMFLOAT2(0, screenY),
 		DirectX::Colors::White
 	);
 
-	this->spriteBatch->End();
+	spriteBatch->End();
 }
