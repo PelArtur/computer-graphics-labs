@@ -3,6 +3,9 @@
 #include <wrl/client.h>
 #include "Color.hpp"
 #include <assimp/material.h>
+#include <vector>
+#include <DirectXMath.h>
+using namespace DirectX;
 
 enum class TextureStorageType
 {

@@ -92,3 +92,10 @@ struct Warp_pixelShader
 	DirectX::XMFLOAT4 iResolution;
 	float iTime;
 };
+
+
+struct TerrainBuffer
+{
+	float minHeight;
+	float maxHeight;
+};

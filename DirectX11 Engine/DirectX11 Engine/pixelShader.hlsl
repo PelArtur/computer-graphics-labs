@@ -33,17 +33,39 @@ cbuffer lightBuffer : register(b0)
     float3 cameraPos;
 };
 
+cbuffer terrainBuffer : register(b2)
+{
+    float minHeight;
+    float maxHeight;
+};
+
 
 struct PS_INPUT
 {
     float4 inPosition : SV_Position;
     float2 inTexCoord : TEXCOORD;
-    float3 inNormal   : Normal;
+    float3 inNormal : Normal;
     float3 inWorldPos : WORLD_POSITION;
 };
 
 Texture2D objTexture : TEXTURE : register(t0);
 SamplerState objSamplerState : SAMPLER : register(s0);
+
+float4 GetTerrainColor(float normalizedHeight)
+{
+    if (normalizedHeight < 0.1f)
+        return float4(0.0f, 0.1f, 0.5f, 1.0f); // Deep water
+    if (normalizedHeight < 0.15f)
+        return float4(0.0f, 0.3f, 0.8f, 1.0f); // Shallow water
+    if (normalizedHeight < 0.2f)
+        return float4(0.9f, 0.9f, 0.5f, 1.0f); // Sand
+    if (normalizedHeight < 0.35f)
+        return float4(0.1f, 0.6f, 0.1f, 1.0f); // Grass
+    if (normalizedHeight < 0.8f)
+        return float4(0.4f, 0.3f, 0.2f, 1.0f); // Rock
+    return float4(1.0f, 1.0f, 1.0f, 1.0f);     // Snow
+}
+
 
 float4 main(PS_INPUT input) : SV_Target
 {
@@ -106,7 +128,11 @@ float4 main(PS_INPUT input) : SV_Target
 
         appliedLight += (diffuse + specular) * att * currentLight.strength;
     }
-
-    float3 finalColor = sampleColor * appliedLight;
+    
+    float height = input.inWorldPos.y;
+    float normalizedHeight = saturate((height - minHeight) / (maxHeight - minHeight));
+    
+    float4 heightColor = GetTerrainColor(normalizedHeight);
+    float3 finalColor = heightColor.xyz * appliedLight;
     return float4(finalColor, 1.0f);
 }

@@ -175,10 +175,12 @@
     <ClCompile Include="Source.cpp" />
     <ClCompile Include="StringHelper.cpp" />
     <ClCompile Include="Graphics\Texture.cpp" />
+    <ClCompile Include="Terrain.cpp" />
     <ClCompile Include="Timer.cpp" />
     <ClCompile Include="WindowContainer.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="db_perlin.hpp" />
     <ClInclude Include="Graphics\Color.hpp" />
     <ClInclude Include="COMException.hpp" />
     <ClInclude Include="Graphics\GameObject.hpp" />
@@ -213,10 +215,15 @@
     <ClInclude Include="Graphics\Vertex.hpp" />
     <ClInclude Include="Graphics\VertexBuffer.hpp" />
     <ClInclude Include="Graphics\Texture.hpp" />
+    <ClInclude Include="Terrain.hpp" />
     <ClInclude Include="Timer.hpp" />
     <ClInclude Include="WindowContainer.hpp" />
   </ItemGroup>
   <ItemGroup>
+    <FxCompile Include="perlinNoise.hlsl">
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Compute</ShaderType>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Release|x64'">5.0</ShaderModel>
+    </FxCompile>
     <FxCompile Include="pixelShader.hlsl">
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Pixel</ShaderType>
       <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">5.0</ShaderModel>

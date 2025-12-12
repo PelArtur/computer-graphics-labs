@@ -29,7 +29,7 @@ bool Model::Initialize(std::vector<Vertex>& vertices, std::vector<DWORD>& indice
 	this->device = device;
 	this->deviceContext = deviceContext;
 	this->cb_vertexShader = &cb_vertexShader;
-
+	meshes.clear();
 	try
 	{
 		meshes.emplace_back(Mesh(device, deviceContext, vertices, indices, textures, transform));

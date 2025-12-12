@@ -1,9 +1,12 @@
 #pragma once  
+#include <cmath>
+#include <random>
 #include "AdapterReader.hpp"  
 #include "Shaders.hpp"  
 #include "Camera.hpp"
 #include "RenderableGameObject.hpp"
 #include "Light.hpp"
+#include "../Terrain.hpp"
 #include "../Timer.hpp"
 
 //fonts 
@@ -23,7 +26,7 @@ public:
     bool Initialize(HWND hwnd, int width, int height);  
     void RenderFrame();
     Camera camera;
-    std::vector<RenderableGameObject> skulls;
+    Terrain terrain;
     RenderableGameObject plane;
     std::vector<Light> dynamicLights;
 
@@ -31,6 +34,7 @@ private:
     bool InitializeDirectX(HWND hwnd);  
     bool InitializeShaders();  
     bool InitializeScene();
+    bool InitializePlane();
     void ShowFPSstats();
     void ShowCoords(const std::string& objectName, const DirectX::XMVECTOR& position, float screenY);
  
@@ -49,6 +53,7 @@ private:
     ConstantBuffer<CB_VS_vertexShader> cb_vertexShader;
     ConstantBuffer<CB_PS_LightsData> cb_ps_light;
     ConstantBuffer<CB_PS_LightColor> cb_ps_lightModelColor;
+    ConstantBuffer<TerrainBuffer> cb_ps_terrain_params;
     ConstantBuffer<Voronoise_pixelShader> psConstantBuffer;
     ConstantBuffer<Warp_pixelShader> warpConstantBuffer;
 
@@ -72,4 +77,5 @@ private:
     int windowHeight = 0;
     Timer fpsTimer;
     Timer shadersTimer;
+    Timer terrainGenerationTimer;
 };

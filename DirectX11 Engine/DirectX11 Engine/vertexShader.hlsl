@@ -45,6 +45,5 @@ VS_OUTPUT main(VS_INPUT input)
     output.outTexCoord = input.inTexCoord;
     output.outNormal   = normalize(mul(float4(input.inNormal, 0.0f), worldMatrix));
     output.outWorldPos = mul(float4(input.inPos, 1.0f), worldMatrix);
-    //output.outWorldPos = worldPos;
     return output;
 }
