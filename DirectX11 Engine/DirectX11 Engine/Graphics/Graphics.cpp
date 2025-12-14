@@ -26,6 +26,8 @@ bool Graphics::Initialize(HWND hwnd, int width, int height)
 		return false;
 	if (!InitializeShaders())
 		return false;
+	if (!InitializeHDRResources())
+		return false;
 	if (!InitializeScene())
 		return false;
 
@@ -200,8 +202,8 @@ bool Graphics::InitializeShaders()
 		{ "POSITION", 0, DXGI_FORMAT::DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D11_INPUT_CLASSIFICATION::D3D11_INPUT_PER_VERTEX_DATA, 0 },
 		{ "TEXCOORD", 0, DXGI_FORMAT::DXGI_FORMAT_R32G32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_CLASSIFICATION::D3D11_INPUT_PER_VERTEX_DATA, 0 },
 		{ "NORMAL", 0, DXGI_FORMAT::DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_CLASSIFICATION::D3D11_INPUT_PER_VERTEX_DATA, 0 },
-		//{ "INSTANCEOFFSET", 0, DXGI_FORMAT::DXGI_FORMAT_R32G32B32_FLOAT, 1, 0, D3D11_INPUT_CLASSIFICATION::D3D11_INPUT_PER_INSTANCE_DATA, 1 },
 
+		// Matrix Row 1 (float4)
 		{ "INSTANCE_MAT", 0, DXGI_FORMAT::DXGI_FORMAT_R32G32B32A32_FLOAT, 1, 0, D3D11_INPUT_CLASSIFICATION::D3D11_INPUT_PER_INSTANCE_DATA, 1 },
 		// Matrix Row 2 (float4)
 		{ "INSTANCE_MAT", 1, DXGI_FORMAT::DXGI_FORMAT_R32G32B32A32_FLOAT, 1, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_CLASSIFICATION::D3D11_INPUT_PER_INSTANCE_DATA, 1 },
@@ -222,7 +224,54 @@ bool Graphics::InitializeShaders()
 		return false;
 	if (!warpShader.Initialize(device, GetExecutableFolder() + L"WarpEffectPS.cso"))
 		return false;
+
+	D3D11_INPUT_ELEMENT_DESC fullscreenLayout[] = {
+		{ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+		{ "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, 12, D3D11_INPUT_PER_VERTEX_DATA, 0 }
+	};
+	UINT fullscreenNumElements = ARRAYSIZE(fullscreenLayout);
+	if (!fullscreenVS.Initialize(device, GetExecutableFolder() + L"fullscreenVS.cso", fullscreenLayout, fullscreenNumElements))
+		return false;
+	if (!tonemapPS.Initialize(device, GetExecutableFolder() + L"tonemapPS.cso"))
+		return false;
+
 	return true;
+}
+
+
+bool Graphics::InitializeHDRResources() {
+	try {
+		CD3D11_TEXTURE2D_DESC hdrTexDesc(
+			DXGI_FORMAT_R16G16B16A16_FLOAT,
+			windowWidth, windowHeight
+		);
+		hdrTexDesc.MipLevels = 1;
+		hdrTexDesc.ArraySize = 1;
+		hdrTexDesc.BindFlags = D3D11_BIND_RENDER_TARGET | D3D11_BIND_SHADER_RESOURCE;
+
+		HRESULT hr = device->CreateTexture2D(&hdrTexDesc, nullptr, hdrTexture.GetAddressOf());
+		COM_ERROR_IF_FAILED(hr, "Failed to create HDR texture");
+
+		hr = device->CreateRenderTargetView(hdrTexture.Get(), nullptr, hdrRTV.GetAddressOf());
+		COM_ERROR_IF_FAILED(hr, "Failed to create HDR RTV");
+
+		hr = device->CreateShaderResourceView(hdrTexture.Get(), nullptr, hdrSRV.GetAddressOf());
+		COM_ERROR_IF_FAILED(hr, "Failed to create HDR SRV");
+
+		D3D11_RASTERIZER_DESC rsDesc = {};
+		rsDesc.FillMode = D3D11_FILL_SOLID;
+		rsDesc.CullMode = D3D11_CULL_NONE;
+		hr = device->CreateRasterizerState(&rsDesc, &fullscreenRS);
+		COM_ERROR_IF_FAILED(hr, "Failed to create rasterizer state.");
+
+		if (!fullscreenQuad.Initialize(this->device.Get(), this->deviceContext.Get()))
+			return false;
+		return true;
+	}
+	catch (COMException& exception) {
+		ErrorLogger::Log(exception);
+		return false;
+	}
 }
 
 
@@ -248,6 +297,14 @@ bool Graphics::InitializeScene()
 
 		hr = this->warpConstantBuffer.Initialize(this->device.Get(), this->deviceContext.Get());
 		COM_ERROR_IF_FAILED(hr, "Failed to initialize warp pixel shader constant buffer.");
+
+		hr = this->cbTonemap.Initialize(this->device.Get(), this->deviceContext.Get());
+		COM_ERROR_IF_FAILED(hr, "Failed to initialize tonemap constant buffer");
+
+		// Set default tonemapping values
+		this->cbTonemap.data.exposure = 1.0f;
+		this->cbTonemap.data.gamma = 2.2f;
+		this->cbTonemap.data.tonemapOperator = 1;
 
 		this->psConstantBuffer.data.iResolution = {
 			static_cast<float>(windowWidth),
@@ -427,7 +484,7 @@ DirectX::XMFLOAT3 GetDirectionFromRotation(const DirectX::XMFLOAT3& rotation)
 }
 
 
-void Graphics::RenderFrame()
+void Graphics::MainRenderPass()
 {
 	this->cb_ps_light.data.cameraPos = camera.GetPositionFloat3();
 	this->cb_ps_light.data.numLights = (int)dynamicLights.size();
@@ -447,11 +504,13 @@ void Graphics::RenderFrame()
 	}
 
 	this->cb_ps_light.ApplyChanges();
-	this->deviceContext->PSSetConstantBuffers(0, 1, this->cb_ps_light.GetAddressOf());
 
-	float backgroundColor[] = {0.0f, 0.0f, 0.0f, 1.0f};
+	float backgroundColor[] = { 0.0f, 0.0f, 0.0f, 1.0f };
 	this->deviceContext->ClearRenderTargetView(this->renderTargetView.Get(), backgroundColor);
+	this->deviceContext->ClearRenderTargetView(this->hdrRTV.Get(), backgroundColor);
 	this->deviceContext->ClearDepthStencilView(this->depthStencilView.Get(), D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, 1.0f, 0);
+
+	this->deviceContext->OMSetRenderTargets(1, this->hdrRTV.GetAddressOf(), this->depthStencilView.Get());
 
 	this->deviceContext->IASetInputLayout(this->vertexShader.GetInputLayout());
 	this->deviceContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY::D3D10_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
@@ -459,12 +518,13 @@ void Graphics::RenderFrame()
 	this->deviceContext->OMSetDepthStencilState(this->depthStencilState.Get(), 0);
 	this->deviceContext->OMSetBlendState(this->blendState.Get(), NULL, 0xFFFFFFFF);
 	this->deviceContext->PSSetSamplers(0, 1, this->samplerState.GetAddressOf());
+	this->deviceContext->PSSetConstantBuffers(0, 1, this->cb_ps_light.GetAddressOf());
 	this->deviceContext->VSSetShader(vertexShader.GetShader(), NULL, 0);
 	this->deviceContext->PSSetShader(pixelShader.GetShader(), NULL, 0);
 
 	{
 		this->plane.Draw(camera.GetViewMatrix() * camera.GetProjectionMatrix());
-		for(int i = 0; i < numSkulls; ++i)
+		for (int i = 0; i < numSkulls; ++i)
 		{
 			skulls[i].SetPosition(translationOffset[i * 3], translationOffset[i * 3 + 1], translationOffset[i * 3 + 2]);
 			skulls[i].SetRotation(rotationOffset[i * 3], rotationOffset[i * 3 + 1], rotationOffset[i * 3 + 2]);
@@ -487,7 +547,35 @@ void Graphics::RenderFrame()
 			}
 		}
 	}
+}
 
+
+void Graphics::ToneMappingPass()
+{
+	this->deviceContext->OMSetRenderTargets(1, this->renderTargetView.GetAddressOf(), nullptr);
+	this->deviceContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
+	this->deviceContext->IASetInputLayout(fullscreenVS.GetInputLayout());
+
+	this->deviceContext->VSSetShader(fullscreenVS.GetShader(), NULL, 0);
+	this->deviceContext->PSSetShader(tonemapPS.GetShader(), NULL, 0);
+
+	this->deviceContext->PSSetShaderResources(0, 1, this->hdrSRV.GetAddressOf());
+	this->deviceContext->PSSetSamplers(0, 1, this->samplerState.GetAddressOf());
+
+	// Set tonemapping constant buffer
+	this->cbTonemap.ApplyChanges();
+	this->deviceContext->PSSetConstantBuffers(0, 1, this->cbTonemap.GetAddressOf());
+
+	deviceContext->RSSetState(this->fullscreenRS.Get());
+
+	fullscreenQuad.Draw();
+	ID3D11ShaderResourceView* nullSRV = nullptr;
+	this->deviceContext->PSSetShaderResources(0, 1, &nullSRV);
+}
+
+
+void Graphics::ImGUIPass()
+{
 	//FPS counter
 	ShowFPSstats();
 	ShowCoords("Camera", this->camera.GetPositionVector(), 40.0f);
@@ -495,7 +583,7 @@ void Graphics::RenderFrame()
 	ImGui_ImplDX11_NewFrame();
 	ImGui_ImplWin32_NewFrame();
 	ImGui::NewFrame();
-	
+
 	ImGui::Begin("Models");
 	for (int i = 0; i < numSkulls; ++i)
 	{
@@ -559,6 +647,14 @@ void Graphics::RenderFrame()
 
 	ImGui::Render();
 	ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());
+}
+
+
+void Graphics::RenderFrame()
+{
+	MainRenderPass();
+	ToneMappingPass();
+	ImGUIPass();
 	this->swapchain->Present(0, NULL); //VSYNC ON -- 1, OFF -- 0
 }
 

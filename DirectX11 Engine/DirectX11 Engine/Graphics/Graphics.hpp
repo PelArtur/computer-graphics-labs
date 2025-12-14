@@ -25,12 +25,18 @@ public:
     Camera camera;
     std::vector<RenderableGameObject> skulls;
     RenderableGameObject plane;
+    FullscreenQuad fullscreenQuad;
     std::vector<Light> dynamicLights;
 
 private:  
     bool InitializeDirectX(HWND hwnd);  
     bool InitializeShaders();  
     bool InitializeScene();
+    bool InitializeHDRResources();
+    void MainRenderPass();
+    void ToneMappingPass();
+    void ImGUIPass();
+
     void ShowFPSstats();
     void ShowCoords(const std::string& objectName, const DirectX::XMVECTOR& position, float screenY);
  
@@ -39,16 +45,19 @@ private:
     Microsoft::WRL::ComPtr<IDXGISwapChain> swapchain;                  //swapping frames   
     Microsoft::WRL::ComPtr<ID3D11RenderTargetView> renderTargetView;  
 
-    VertexShader vertexShader;  
+    VertexShader vertexShader;
+    VertexShader fullscreenVS;
 
     PixelShader pixelShader;
     PixelShader pixelShader_nolight;
+    PixelShader tonemapPS;
     PixelShader voronoiseShader;
     PixelShader warpShader;
     
     ConstantBuffer<CB_VS_vertexShader> cb_vertexShader;
     ConstantBuffer<CB_PS_LightsData> cb_ps_light;
     ConstantBuffer<CB_PS_LightColor> cb_ps_lightModelColor;
+    ConstantBuffer<TonemapParams> cbTonemap;
     ConstantBuffer<Voronoise_pixelShader> psConstantBuffer;
     ConstantBuffer<Warp_pixelShader> warpConstantBuffer;
 
@@ -59,6 +68,7 @@ private:
     Microsoft::WRL::ComPtr<ID3D11DepthStencilState> depthStencilState;  
 
     Microsoft::WRL::ComPtr<ID3D11RasterizerState> rasterizerState;
+    Microsoft::WRL::ComPtr<ID3D11RasterizerState> fullscreenRS;
     Microsoft::WRL::ComPtr<ID3D11BlendState> blendState;
 
     std::unique_ptr<DirectX::SpriteBatch> spriteBatch;
@@ -68,8 +78,13 @@ private:
     Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> myTexture;
     Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> myTexture2;
 
+    Microsoft::WRL::ComPtr<ID3D11Texture2D> hdrTexture;
+    Microsoft::WRL::ComPtr<ID3D11RenderTargetView> hdrRTV;
+    Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> hdrSRV;
+
     int windowWidth = 0;
     int windowHeight = 0;
     Timer fpsTimer;
     Timer shadersTimer;
+
 };

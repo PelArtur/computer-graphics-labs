@@ -92,3 +92,11 @@ struct Warp_pixelShader
 	DirectX::XMFLOAT4 iResolution;
 	float iTime;
 };
+
+
+struct TonemapParams {
+	float exposure = 1.0f;
+	float gamma = 2.2f;
+	int tonemapOperator = 0; // 0: Reinhard, 1: ACES, 2: Uncharted2
+	float padding;
+};

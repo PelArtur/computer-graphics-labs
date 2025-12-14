@@ -23,3 +23,22 @@ protected:
 
 	XMMATRIX worldMatrix = XMMatrixIdentity();
 };
+
+
+class FullscreenQuad
+{
+public:
+	bool Initialize(ID3D11Device* device, ID3D11DeviceContext* deviceContext);
+	void Draw();
+
+private:
+	std::vector<FullscreenVertex> vertices = {
+		FullscreenVertex(- 1.0f, -1.0f, 0.0f, 0.0f, 2.0f),  // Bottom-left
+		FullscreenVertex(3.0f, -1.0f, 0.0f, 2.0f, 2.0f),    // Bottom-right
+		FullscreenVertex(-1.0f,  3.0f, 0.0f, 0.0f, 0.0f)    // Top-left
+	};
+
+	ID3D11Device* device = nullptr;
+	ID3D11DeviceContext* deviceContext = nullptr;
+	Microsoft::WRL::ComPtr<ID3D11Buffer> fullscreenQuadVertexBuffer;
+};
