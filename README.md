@@ -3,7 +3,7 @@
 - **Author**: Artur Pelcharskyi
 - **OS**: Windows 11
 - **API**: DirectX11
-- **Total Late Days**: 39
+- **Total Late Days**: 44
 
 ## Homework 1: A Funny Cube
 - **Late Days**: 2
