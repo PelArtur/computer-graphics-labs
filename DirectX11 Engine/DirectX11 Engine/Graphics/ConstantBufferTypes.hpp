@@ -30,6 +30,8 @@ struct LightData
 	int shininess;
 	int lightOn;
 	float pad;
+
+	DirectX::XMMATRIX lightWVP;
 };
 
 
@@ -41,6 +43,10 @@ struct CB_PS_LightsData
 	LightData lights[MAX_LIGHTS];
 	int numLights;
 	DirectX::XMFLOAT3 cameraPos;
+	float shadowBias;
+
+	DirectX::XMFLOAT2 texelSize;
+	int pcfKernelSize;
 };
 
 

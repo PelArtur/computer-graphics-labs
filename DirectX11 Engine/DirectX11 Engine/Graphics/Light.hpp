@@ -1,5 +1,6 @@
 #pragma once
 #include "RenderableGameObject.hpp"
+#include "ConstantBufferTypes.hpp"
 
 enum class LightType : int
 {
@@ -21,3 +22,6 @@ public:
 	float lightStrength = 1.0f;
 	bool lightOn = true;
 };
+
+XMMATRIX CalculateDirectionalLightVP(XMFLOAT3 direction);
+XMMATRIX CalculateSpotlightVP(const LightData& light);

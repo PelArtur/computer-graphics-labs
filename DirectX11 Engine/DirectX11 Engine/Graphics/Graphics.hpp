@@ -16,6 +16,7 @@
 #include "ImGui/imgui_impl_win32.h"
 #include "ImGui/imgui_impl_dx11.h"
 
+#define MAX_SHADOWS 4
 
 class Graphics  
 {  
@@ -33,10 +34,12 @@ private:
     bool InitializeShaders();  
     bool InitializeScene();
     bool InitializeHDRResources();
+    bool InitializeShadowResources();
     void MainRenderPass();
+    void ShadowPass();
     void ToneMappingPass();
     void ImGUIPass();
-
+    
     void ShowFPSstats();
     void ShowCoords(const std::string& objectName, const DirectX::XMVECTOR& position, float screenY);
  
@@ -50,6 +53,7 @@ private:
 
     PixelShader pixelShader;
     PixelShader pixelShader_nolight;
+    PixelShader pixelShader_noComparisonSampler;
     PixelShader tonemapPS;
     PixelShader voronoiseShader;
     PixelShader warpShader;
@@ -69,12 +73,14 @@ private:
 
     Microsoft::WRL::ComPtr<ID3D11RasterizerState> rasterizerState;
     Microsoft::WRL::ComPtr<ID3D11RasterizerState> fullscreenRS;
+    Microsoft::WRL::ComPtr<ID3D11RasterizerState> shadowRS;
     Microsoft::WRL::ComPtr<ID3D11BlendState> blendState;
 
     std::unique_ptr<DirectX::SpriteBatch> spriteBatch;
     std::unique_ptr<DirectX::SpriteFont> spriteFont;
 
     Microsoft::WRL::ComPtr<ID3D11SamplerState> samplerState;
+    Microsoft::WRL::ComPtr<ID3D11SamplerState> shadowSamplerState;
     Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> myTexture;
     Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> myTexture2;
 
@@ -82,8 +88,16 @@ private:
     Microsoft::WRL::ComPtr<ID3D11RenderTargetView> hdrRTV;
     Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> hdrSRV;
 
+    std::vector<Microsoft::WRL::ComPtr<ID3D11DepthStencilView>> shadowDSVs;
+    Microsoft::WRL::ComPtr<ID3D11Texture2D> shadowTextureArray;
+    Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> shadowSRVArray;
+    Microsoft::WRL::ComPtr<ID3D11RenderTargetView> shadowRTV;
+
     int windowWidth = 0;
     int windowHeight = 0;
     Timer fpsTimer;
     Timer shadersTimer;
+
+    const UINT SHADOW_MAP_WIDTH = 2048;
+    const UINT SHADOW_MAP_HEIGHT = 2048;
 };

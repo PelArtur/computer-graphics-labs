@@ -253,5 +253,14 @@
     <FxCompile Include="pixelShader_nolight.hlsl">
       <Filter>Resource Files</Filter>
     </FxCompile>
+    <FxCompile Include="fullscreenVS.hlsl">
+      <Filter>Resource Files</Filter>
+    </FxCompile>
+    <FxCompile Include="tonemapPS.hlsl">
+      <Filter>Resource Files</Filter>
+    </FxCompile>
+    <FxCompile Include="pixelShader_noCompSampler.hlsl">
+      <Filter>Resource Files</Filter>
+    </FxCompile>
   </ItemGroup>
 </Project>

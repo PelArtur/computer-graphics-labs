@@ -49,7 +49,7 @@ struct PS_INPUT
 {
     float4 inPosition : SV_Position;
     float2 inTexCoord : TEXCOORD;
-    float3 inNormal   : Normal;
+    float3 inNormal : Normal;
     float3 inWorldPos : WORLD_POSITION;
 };
 
@@ -74,23 +74,34 @@ float CalculateShadow(float3 worldPos, float4x4 lightVP, int shadowIndex)
         return 1.0f;
     }
 
+    uint width, height, arraySize;
+    shadowMaps.GetDimensions(width, height, arraySize);
+    
+    uint2 texelPos = uint2(shadowPos.x * width, shadowPos.y * height);
+    
     float shadow = 0.0f;
     float power = pow(pcfKernalSize, 2);
     int bounds = pcfKernalSize / 2;
-
+    
     for (int x = -bounds; x <= bounds; ++x)
     {
         for (int y = -bounds; y <= bounds; ++y)
         {
-            float2 offset = float2(x, y) * texelSize;
-            shadow += shadowMaps.SampleCmpLevelZero(shadowSampler,
-                                         float3(shadowPos.xy + offset, shadowIndex),
-                                         shadowPos.z - shadowBias);
+            uint2 samplePos = texelPos + uint2(x, y);
+            
+            if (samplePos.x >= width || samplePos.y >= height)
+                continue;
+                
+            float sampledDepth = shadowMaps.Load(int4(samplePos.x, samplePos.y, shadowIndex, 0)).r;
+            float currentDepth = shadowPos.z - shadowBias;
+            
+            if (currentDepth <= sampledDepth)
+                shadow += 1.0f;
         }
     }
+    
     return shadow / power;
 }
-
 
 float4 main(PS_INPUT input) : SV_Target
 {

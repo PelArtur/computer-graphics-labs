@@ -11,9 +11,11 @@ static std::vector<float> translationOffset(3 * numSkulls, 0.0f);
 static std::vector<float> rotationOffset(3 * numSkulls, 0.0f);
 static std::vector<float> scaleOffset(3 * numSkulls, 3.0f);
 static bool showLights = true;
+static bool useComparisonSampler = true;
 static bool turnOnBlinn = true;
 static int shininess = 32;
 static float lightSphereRadius = 0.05f;
+static int cameraMode = 0;
 
 bool Graphics::Initialize(HWND hwnd, int width, int height) 
 {
@@ -25,6 +27,8 @@ bool Graphics::Initialize(HWND hwnd, int width, int height)
 	if (!InitializeDirectX(hwnd))
 		return false;
 	if (!InitializeShaders())
+		return false;
+	if (!InitializeShadowResources())
 		return false;
 	if (!InitializeHDRResources())
 		return false;
@@ -220,6 +224,8 @@ bool Graphics::InitializeShaders()
 		return false;
 	if (!pixelShader_nolight.Initialize(device, GetExecutableFolder() + L"pixelShader_nolight.cso"))
 		return false;
+	if (!pixelShader_noComparisonSampler.Initialize(device, GetExecutableFolder() + L"pixelShader_noCompSampler.cso"))
+		return false;
 	if (!voronoiseShader.Initialize(device, GetExecutableFolder() + L"voronoisePixelShader.cso"))
 		return false;
 	if (!warpShader.Initialize(device, GetExecutableFolder() + L"WarpEffectPS.cso"))
@@ -234,7 +240,6 @@ bool Graphics::InitializeShaders()
 		return false;
 	if (!tonemapPS.Initialize(device, GetExecutableFolder() + L"tonemapPS.cso"))
 		return false;
-
 	return true;
 }
 
@@ -275,6 +280,86 @@ bool Graphics::InitializeHDRResources() {
 }
 
 
+bool Graphics::InitializeShadowResources() 
+{
+	try {
+		CD3D11_TEXTURE2D_DESC shadowTexDesc(
+			DXGI_FORMAT_R24G8_TYPELESS,
+			SHADOW_MAP_WIDTH, SHADOW_MAP_HEIGHT
+		);
+		shadowTexDesc.MipLevels = 1;
+		shadowTexDesc.ArraySize = MAX_SHADOWS;
+		shadowTexDesc.BindFlags = D3D11_BIND_DEPTH_STENCIL | D3D11_BIND_SHADER_RESOURCE;
+
+		HRESULT hr = device->CreateTexture2D(&shadowTexDesc, nullptr, &shadowTextureArray);
+		COM_ERROR_IF_FAILED(hr, "Failed to create shadow texture array");
+
+		shadowDSVs.resize(MAX_SHADOWS);
+		for (UINT i = 0; i < MAX_SHADOWS; i++) {
+			CD3D11_DEPTH_STENCIL_VIEW_DESC dsvDesc(
+				D3D11_DSV_DIMENSION_TEXTURE2DARRAY,
+				DXGI_FORMAT_D24_UNORM_S8_UINT,
+				0,
+				i,
+				1
+			);
+
+			hr = device->CreateDepthStencilView(
+				shadowTextureArray.Get(),
+				&dsvDesc,
+				&shadowDSVs[i]
+			);
+			COM_ERROR_IF_FAILED(hr, "Failed to create shadow DSV for slice");
+		}
+
+		CD3D11_SHADER_RESOURCE_VIEW_DESC srvDesc(
+			D3D11_SRV_DIMENSION_TEXTURE2DARRAY,
+			DXGI_FORMAT_R24_UNORM_X8_TYPELESS,
+			0,
+			1, 
+			0, 
+			MAX_SHADOWS
+		);
+
+		hr = device->CreateShaderResourceView(
+			shadowTextureArray.Get(),
+			&srvDesc,
+			&shadowSRVArray
+		);
+		COM_ERROR_IF_FAILED(hr, "Failed to create shadow SRV array");
+
+		D3D11_RASTERIZER_DESC rsDesc = CD3D11_RASTERIZER_DESC(CD3D11_DEFAULT());
+		rsDesc.CullMode = D3D11_CULL_FRONT;
+		rsDesc.DepthBias = 1000;
+		rsDesc.DepthBiasClamp = 0.0f;
+		rsDesc.SlopeScaledDepthBias = 1.0f;
+		rsDesc.FillMode = D3D11_FILL_SOLID;
+
+		hr = device->CreateRasterizerState(&rsDesc, this->shadowRS.GetAddressOf());
+		COM_ERROR_IF_FAILED(hr, "Failed to create shadow rasterizer state.");
+
+		D3D11_SAMPLER_DESC samplerDesc = CD3D11_SAMPLER_DESC(CD3D11_DEFAULT());
+		samplerDesc.Filter = D3D11_FILTER_COMPARISON_MIN_MAG_LINEAR_MIP_POINT;
+		samplerDesc.ComparisonFunc = D3D11_COMPARISON_LESS_EQUAL;
+		samplerDesc.AddressU = D3D11_TEXTURE_ADDRESS_BORDER;
+		samplerDesc.AddressV = D3D11_TEXTURE_ADDRESS_BORDER;
+		samplerDesc.AddressW = D3D11_TEXTURE_ADDRESS_BORDER;
+		samplerDesc.BorderColor[0] = 1.0f;
+		samplerDesc.BorderColor[1] = 1.0f;
+		samplerDesc.BorderColor[2] = 1.0f;
+		samplerDesc.BorderColor[3] = 1.0f;
+
+		hr = device->CreateSamplerState(&samplerDesc, this->shadowSamplerState.GetAddressOf());
+		COM_ERROR_IF_FAILED(hr, "Failed to create shadow sampler state.");
+		return true;
+	}
+	catch (COMException& exception) {
+		ErrorLogger::Log(exception);
+		return false;
+	}
+}
+
+
 bool Graphics::InitializeScene()
 {
 	try
@@ -291,6 +376,9 @@ bool Graphics::InitializeScene()
 
 		this->cb_ps_light.data.ambientLightColor = XMFLOAT3(1.0f, 1.0f, 1.0f);
 		this->cb_ps_light.data.ambientLightStrength = 0.1f;
+		this->cb_ps_light.data.shadowBias = 0.001f;
+		this->cb_ps_light.data.texelSize = XMFLOAT2(1.0f / (float) SHADOW_MAP_WIDTH, 1.0f / (float) SHADOW_MAP_HEIGHT);
+		this->cb_ps_light.data.pcfKernelSize = 3;
 
 		hr = this->psConstantBuffer.Initialize(this->device.Get(), this->deviceContext.Get());
 		COM_ERROR_IF_FAILED(hr, "Failed to initialize voronoise pixel shader constant buffer.");
@@ -301,9 +389,8 @@ bool Graphics::InitializeScene()
 		hr = this->cbTonemap.Initialize(this->device.Get(), this->deviceContext.Get());
 		COM_ERROR_IF_FAILED(hr, "Failed to initialize tonemap constant buffer");
 
-		// Set default tonemapping values
 		this->cbTonemap.data.exposure = 1.0f;
-		this->cbTonemap.data.gamma = 2.2f;
+		this->cbTonemap.data.gamma = 1.0f;
 		this->cbTonemap.data.tonemapOperator = 1;
 
 		this->psConstantBuffer.data.iResolution = {
@@ -370,7 +457,6 @@ bool Graphics::InitializeScene()
 		std::vector<Texture> textures;
 		textures.emplace_back(this->device.Get(), "Data/Textures/grid.jpg", aiTextureType::aiTextureType_DIFFUSE);
 
-		//Initialize Model
 		if (!plane.Initialize(vertices, indices, textures, XMMatrixIdentity(), this->device.Get(), this->deviceContext.Get(), cb_vertexShader))
 			return false;
 		{
@@ -397,7 +483,7 @@ bool Graphics::InitializeScene()
 			light1.SetScale(0.0f, 0.0f, 0.0f);
 			light1.lightColor = XMFLOAT3(1.0f, 0.5f, 0.0f);
 			light1.lightStrength = 1.0f;
-			this->cb_ps_light.data.lights[0].direction = { 9.0f, -5.0f, 2.54f };
+			this->cb_ps_light.data.lights[0].direction = { -1.0f, -15.0f, 27.0f };
 			dynamicLights.push_back(std::move(light1));
 
 			Light light2;
@@ -410,12 +496,13 @@ bool Graphics::InitializeScene()
 			dynamicLights.push_back(std::move(light2));
 
 			Light light3;
-			if (!light3.Initialize(this->device.Get(), this->deviceContext.Get(), cb_vertexShader, LightType::Point))
+			if (!light3.Initialize(this->device.Get(), this->deviceContext.Get(), cb_vertexShader, LightType::Spot))
 				return false;
-			light3.lightPosition = XMFLOAT3(7.7f, 4.0f, 0.0f);
+			light3.lightPosition = XMFLOAT3(4.9f, 4.0f, -3.6f);
 			light3.SetScale(lightSphereRadius, lightSphereRadius, lightSphereRadius);
-			light3.lightColor = XMFLOAT3(0.0f, 0.0f, 1.0f);
-			light3.lightStrength = 5.0f;
+			light3.lightColor = XMFLOAT3(1.0f, 0.0f, 0.0f);
+			light3.lightStrength = 15.0f;
+			this->cb_ps_light.data.lights[2].direction = { 0.46f, -4.46f, 5.39f };
 			dynamicLights.push_back(std::move(light3));
 
 			Light light4;
@@ -483,8 +570,16 @@ DirectX::XMFLOAT3 GetDirectionFromRotation(const DirectX::XMFLOAT3& rotation)
 }
 
 
-void Graphics::MainRenderPass()
+void Graphics::ShadowPass()
 {
+	this->deviceContext->RSSetState(this->rasterizerState.Get());
+	this->deviceContext->IASetInputLayout(this->vertexShader.GetInputLayout());
+	this->deviceContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY::D3D10_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+	this->deviceContext->OMSetDepthStencilState(this->depthStencilState.Get(), 0);
+
+	this->deviceContext->VSSetShader(vertexShader.GetShader(), NULL, 0);
+	this->deviceContext->PSSetShader(nullptr, NULL, 0);
+
 	this->cb_ps_light.data.cameraPos = camera.GetPositionFloat3();
 	this->cb_ps_light.data.numLights = (int)dynamicLights.size();
 
@@ -500,15 +595,44 @@ void Graphics::MainRenderPass()
 		targetData.turnOnBlinn = turnOnBlinn ? 1 : 0;
 		targetData.shininess = shininess;
 		targetData.lightOn = currentLight.lightOn && showLights;
+
+		XMMATRIX lightWVP = XMMatrixIdentity();
+		if (currentLight.type == LightType::Directional)
+			lightWVP = CalculateDirectionalLightVP(cb_ps_light.data.lights[i].direction);
+		else if (currentLight.type == LightType::Spot)
+			lightWVP = CalculateSpotlightVP(targetData);
+		else
+			continue;
+		targetData.lightWVP = lightWVP;
+
+		D3D11_VIEWPORT shadowViewport = {};
+		shadowViewport.Width = SHADOW_MAP_WIDTH;
+		shadowViewport.Height = SHADOW_MAP_HEIGHT;
+		shadowViewport.MinDepth = 0.0f;
+		shadowViewport.MaxDepth = 1.0f;
+		this->deviceContext->RSSetViewports(1, &shadowViewport);
+
+		this->deviceContext->ClearDepthStencilView(this->shadowDSVs[i].Get(), D3D11_CLEAR_DEPTH, 1.0f, 0);
+		this->deviceContext->OMSetRenderTargets(0, nullptr, this->shadowDSVs[i].Get());
+
+		{
+			this->plane.Draw(lightWVP);
+			for (int i = 0; i < numSkulls; ++i)
+			{
+				skulls[i].SetPosition(translationOffset[i * 3], translationOffset[i * 3 + 1], translationOffset[i * 3 + 2]);
+				skulls[i].SetRotation(rotationOffset[i * 3], rotationOffset[i * 3 + 1], rotationOffset[i * 3 + 2]);
+				skulls[i].SetScale(scaleOffset[i * 3], scaleOffset[i * 3 + 1], scaleOffset[i * 3 + 2]);
+				skulls[i].Draw(lightWVP);
+			}
+		}
 	}
 
 	this->cb_ps_light.ApplyChanges();
+}
 
-	float backgroundColor[] = { 0.0f, 0.0f, 0.0f, 1.0f };
-	this->deviceContext->ClearRenderTargetView(this->renderTargetView.Get(), backgroundColor);
-	this->deviceContext->ClearRenderTargetView(this->hdrRTV.Get(), backgroundColor);
-	this->deviceContext->ClearDepthStencilView(this->depthStencilView.Get(), D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, 1.0f, 0);
 
+void Graphics::MainRenderPass()
+{
 	this->deviceContext->OMSetRenderTargets(1, this->hdrRTV.GetAddressOf(), this->depthStencilView.Get());
 
 	this->deviceContext->IASetInputLayout(this->vertexShader.GetInputLayout());
@@ -517,18 +641,35 @@ void Graphics::MainRenderPass()
 	this->deviceContext->OMSetDepthStencilState(this->depthStencilState.Get(), 0);
 	this->deviceContext->OMSetBlendState(this->blendState.Get(), NULL, 0xFFFFFFFF);
 	this->deviceContext->PSSetSamplers(0, 1, this->samplerState.GetAddressOf());
+	this->deviceContext->PSSetShaderResources(1, 1, shadowSRVArray.GetAddressOf());
+	this->deviceContext->PSSetSamplers(1, 1, shadowSamplerState.GetAddressOf());
 	this->deviceContext->PSSetConstantBuffers(0, 1, this->cb_ps_light.GetAddressOf());
 	this->deviceContext->VSSetShader(vertexShader.GetShader(), NULL, 0);
-	this->deviceContext->PSSetShader(pixelShader.GetShader(), NULL, 0);
+	if (useComparisonSampler)
+		this->deviceContext->PSSetShader(pixelShader.GetShader(), NULL, 0);
+	else
+		this->deviceContext->PSSetShader(pixelShader_noComparisonSampler.GetShader(), NULL, 0);
 
+	D3D11_VIEWPORT mainViewport = {};
+	mainViewport.Width = static_cast<float>(windowWidth);
+	mainViewport.Height = static_cast<float>(windowHeight);
+	mainViewport.MinDepth = 0.0f;
+	mainViewport.MaxDepth = 1.0f;
+	this->deviceContext->RSSetViewports(1, &mainViewport);
+
+	XMMATRIX vp = camera.GetViewMatrix() * camera.GetProjectionMatrix();
+	if (cameraMode == 1)
+		vp = CalculateDirectionalLightVP(cb_ps_light.data.lights[0].direction);
+	else if (cameraMode == 2)
+		vp = CalculateSpotlightVP(cb_ps_light.data.lights[3]);
 	{
-		this->plane.Draw(camera.GetViewMatrix() * camera.GetProjectionMatrix());
+		this->plane.Draw(vp);
 		for (int i = 0; i < numSkulls; ++i)
 		{
 			skulls[i].SetPosition(translationOffset[i * 3], translationOffset[i * 3 + 1], translationOffset[i * 3 + 2]);
 			skulls[i].SetRotation(rotationOffset[i * 3], rotationOffset[i * 3 + 1], rotationOffset[i * 3 + 2]);
 			skulls[i].SetScale(scaleOffset[i * 3], scaleOffset[i * 3 + 1], scaleOffset[i * 3 + 2]);
-			skulls[i].Draw(camera.GetViewMatrix() * camera.GetProjectionMatrix());
+			skulls[i].Draw(vp);
 		}
 	}
 	{
@@ -542,7 +683,7 @@ void Graphics::MainRenderPass()
 				this->cb_ps_lightModelColor.ApplyChanges();
 				if (light.type != LightType::Directional)
 					light.SetScale(lightSphereRadius, lightSphereRadius, lightSphereRadius);
-				light.Draw(camera.GetViewMatrix() * camera.GetProjectionMatrix());
+				light.Draw(vp);
 			}
 		}
 	}
@@ -560,8 +701,6 @@ void Graphics::ToneMappingPass()
 
 	this->deviceContext->PSSetShaderResources(0, 1, this->hdrSRV.GetAddressOf());
 	this->deviceContext->PSSetSamplers(0, 1, this->samplerState.GetAddressOf());
-
-	// Set tonemapping constant buffer
 	this->cbTonemap.ApplyChanges();
 	this->deviceContext->PSSetConstantBuffers(0, 1, this->cbTonemap.GetAddressOf());
 
@@ -603,6 +742,15 @@ void Graphics::ImGUIPass()
 	ImGui::DragFloat("Sphere radius", &lightSphereRadius, 0.01f, 0.0f, 100.0f);
 	ImGui::Checkbox("Show lights", &showLights);
 	ImGui::Checkbox("Turn on blinn", &turnOnBlinn);
+	ImGui::DragFloat("Shadow bias", &this->cb_ps_light.data.shadowBias, 0.00001f, 0.0f, 0.01f, "%.5f");
+	ImGui::DragInt("PCF Kernel size", &this->cb_ps_light.data.pcfKernelSize, 2, 1, 11);
+	ImGui::Checkbox("Use Comparison Sampler", &useComparisonSampler);
+	const char* cameraSource[] = {
+		"Default",
+		"Directional",
+		"Spot",
+	};
+	ImGui::Combo("Camera source", &cameraMode, cameraSource, IM_ARRAYSIZE(cameraSource));
 	ImGui::End();
 
 	for (size_t i = 0; i < dynamicLights.size(); ++i)
@@ -659,10 +807,16 @@ void Graphics::ImGUIPass()
 	ImGui::Render();
 	ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());
 }
-
+ 
 
 void Graphics::RenderFrame()
 {
+	float backgroundColor[] = { 0.0f, 0.0f, 0.0f, 1.0f };
+	this->deviceContext->ClearRenderTargetView(this->renderTargetView.Get(), backgroundColor);
+	this->deviceContext->ClearRenderTargetView(this->hdrRTV.Get(), backgroundColor);
+	this->deviceContext->ClearDepthStencilView(this->depthStencilView.Get(), D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, 1.0f, 0);
+	
+	ShadowPass();
 	MainRenderPass();
 	ToneMappingPass();
 	ImGUIPass();

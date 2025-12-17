@@ -8,11 +8,13 @@ cbuffer TonemapParams : register(b0) {
 Texture2D hdrTexture : register(t0);
 SamplerState samplerState : register(s0);
 
-float3 Reinhard(float3 color) {
+float3 Reinhard(float3 color) 
+{
     return color / (1.0f + color);
 }
 
-float3 ACES(float3 x) {
+float3 ACES(float3 x) 
+{
     const float a = 2.51f;
     const float b = 0.03f;
     const float c = 2.43f;
@@ -21,7 +23,8 @@ float3 ACES(float3 x) {
     return saturate((x * (a * x + b)) / (x * (c * x + d) + e));
 }
 
-float3 Uncharted2Tonemap(float3 x) {
+float3 Uncharted2Tonemap(float3 x) 
+{
     float A = 0.15f;
     float B = 0.50f;
     float C = 0.10f;
@@ -31,20 +34,24 @@ float3 Uncharted2Tonemap(float3 x) {
     return ((x * (A * x + C * B) + D * E) / (x * (A * x + B) + D * F)) - E / F;
 }
 
-float3 Uncharted2(float3 color) {
+float3 Uncharted2(float3 color) 
+{
     const float W = 11.2f;
-    color = Uncharted2Tonemap(color * exposure);
+    color = Uncharted2Tonemap(color);
     float3 whiteScale = 1.0f / Uncharted2Tonemap(W);
-    return pow(color * whiteScale, 1.0f / gamma);
+    return color * whiteScale;
 }
 
-float4 main(float4 position : SV_POSITION, float2 texcoord : TEXCOORD) : SV_Target {
+float4 main(float4 position : SV_POSITION, float2 texcoord : TEXCOORD) : SV_Target
+{
     float3 hdrColor = hdrTexture.Sample(samplerState, texcoord).rgb;
+    
     hdrColor *= exposure;
     
     float3 mapped;
-    
-    switch (tonemapOperator) {
+
+    switch (tonemapOperator)
+    {
         case 0:
             mapped = Reinhard(hdrColor);
             break;
@@ -60,6 +67,5 @@ float4 main(float4 position : SV_POSITION, float2 texcoord : TEXCOORD) : SV_Targ
     }
     
     mapped = pow(mapped, 1.0f / gamma);
-    
     return float4(mapped, 1.0f);
 }
