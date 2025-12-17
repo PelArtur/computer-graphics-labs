@@ -117,12 +117,14 @@ The scene consists of **four objects** (three skulls and one plane) and **four l
 - Directional light shadow with PCF and Comparison Sampler
 - Comparison of PCF on/off, Comparison Sampler on/off
 - ImGUI
+- Painter’s Algorithm
 
 ### Aditional tasks:
 - Aditional support of spot light shadow
 - Skybox
 - Ability to enable/disable Comparison sampler, change PCF kernel size during the process
 - Switch between camera and lights projection spaces that support shadows
+- Ability to add/delete objects
 
 ### PCF and Comparison Sampler
 ![img](./images/lab4/combined_grid_with_labels.png)

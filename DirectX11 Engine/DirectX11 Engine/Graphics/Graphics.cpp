@@ -5,11 +5,15 @@
 #include <windows.h>
 #include <iomanip>
 
-#define numSkulls 3
+#define initNumSkulls 3
 
-static std::vector<float> translationOffset(3 * numSkulls, 0.0f);
-static std::vector<float> rotationOffset(3 * numSkulls, 0.0f);
-static std::vector<float> scaleOffset(3 * numSkulls, 3.0f);
+static std::vector<float> translationOffset(3 * initNumSkulls, 0.0f);
+static std::vector<float> rotationOffset(3 * initNumSkulls, 0.0f);
+static std::vector<float> scaleOffset(3 * initNumSkulls, 3.0f);
+static std::vector<float> planesTranslationOffset;
+static std::vector<float> planesRotationOffset;
+static std::vector<float> planesScaleOffset;
+static std::vector<float> planesColor;
 static bool showLights = true;
 static bool useComparisonSampler = true;
 static bool turnOnBlinn = true;
@@ -406,6 +410,27 @@ bool Graphics::InitializeShadowResources()
 }
 
 
+void initPlaneParams(float posX, float posY, float posZ,
+				float rotX, float rotY, float rotZ,
+				float sclX, float sclY, float sclZ,
+				float r, float g, float b, float a)
+{
+	planesTranslationOffset.push_back(posX);
+	planesTranslationOffset.push_back(posY);
+	planesTranslationOffset.push_back(posZ);
+	planesRotationOffset.push_back(rotX);
+	planesRotationOffset.push_back(rotY);
+	planesRotationOffset.push_back(rotZ);
+	planesScaleOffset.push_back(sclX);
+	planesScaleOffset.push_back(sclY);
+	planesScaleOffset.push_back(sclZ);
+	planesColor.push_back(r);
+	planesColor.push_back(g);
+	planesColor.push_back(b);
+	planesColor.push_back(a);
+}
+
+
 bool Graphics::InitializeScene()
 {
 	try
@@ -512,13 +537,13 @@ bool Graphics::InitializeScene()
 		{
 			const float radius = 5.0f;
 
-			for(int i = 0; i < numSkulls; ++i)
+			for(int i = 0; i < initNumSkulls; ++i)
 			{
 				RenderableGameObject skull;
 				if (!skull.Initialize("Data/Models/Skull/stylized_dragon_skull.glb", this->device.Get(), this->deviceContext.Get(), cb_vertexShader))
 					return false;
 
-				float angle = XM_2PI * i / numSkulls;
+				float angle = XM_2PI * i / initNumSkulls;
 
 				translationOffset[i * 3] = radius * cosf(angle);
 				translationOffset[i * 3 + 2] = radius * sinf(angle);
@@ -526,6 +551,36 @@ bool Graphics::InitializeScene()
 				skulls.push_back(skull);
 			}
 		}
+		{
+			std::vector<Texture> transparentPlane1Textures;
+			RenderableGameObject transparentPlane1;
+			if (!transparentPlane1.Initialize(planeVertices, planeIndices, transparentPlane1Textures, XMMatrixIdentity(), this->device.Get(), this->deviceContext.Get(), cb_vertexShader))
+				return false;
+			initPlaneParams(35.0f, 1.5f, 5.0f,     //translation
+							0.0f, 0.0f, 0.0f,      //rotation
+							0.5f, 5.0f, 10.0f,     //scaling
+							1.0f, 0.0f, 0.0f, 0.5); //rgba
+			transparentPlanes.push_back(transparentPlane1);
+
+			RenderableGameObject transparentPlane2;
+			if (!transparentPlane2.Initialize(planeVertices, planeIndices, transparentPlane1Textures, XMMatrixIdentity(), this->device.Get(), this->deviceContext.Get(), cb_vertexShader))
+				return false;
+			initPlaneParams(40.0f, 1.5f, 5.0f,      //translation
+							0.0f, 0.0f, 0.0f,       //rotation
+							0.5f, 5.0f, 10.0f,      //scaling
+							1.0f, 1.0f, 0.0f, 0.5); //rgba
+			transparentPlanes.push_back(transparentPlane2);
+
+			RenderableGameObject transparentPlane3;
+			if (!transparentPlane3.Initialize(planeVertices, planeIndices, transparentPlane1Textures, XMMatrixIdentity(), this->device.Get(), this->deviceContext.Get(), cb_vertexShader))
+				return false;
+			initPlaneParams(45.0f, 1.5f, 5.0f,      //translation
+							0.0f, 0.0f, 0.0f,       //rotation
+							0.5f, 5.0f, 10.0f,      //scaling
+							0.0f, 0.0f, 1.0f, 0.5);  //rgba
+			transparentPlanes.push_back(transparentPlane3);
+		}
+
 		{
 			Light light1;
 			if (!light1.Initialize(this->device.Get(), this->deviceContext.Get(), cb_vertexShader, LightType::Directional))
@@ -609,7 +664,7 @@ void Graphics::RenderSkybox()
 	viewMatrix.r[3] = XMVectorSet(0.0f, 0.0f, 0.0f, 1.0f);
 
 	XMMATRIX vp = viewMatrix * camera.GetProjectionMatrix();
-	cb_ps_lightModelColor.data.lightColor = { 1.0f, 1.0f, 1.0f };
+	cb_ps_lightModelColor.data.lightColor = { 1.0f, 1.0f, 1.0f, 1.0f };
 	cb_ps_lightModelColor.ApplyChanges();
 	for (int i = 0; i < 6; ++i)
 		skybox[i].Draw(vp);
@@ -657,7 +712,7 @@ void Graphics::ShadowPass()
 
 		{
 			plane.Draw(lightWVP);
-			for (int i = 0; i < numSkulls; ++i)
+			for (int i = 0; i < skulls.size(); ++i)
 			{
 				skulls[i].SetPosition(translationOffset[i * 3], translationOffset[i * 3 + 1], translationOffset[i * 3 + 2]);
 				skulls[i].SetRotation(rotationOffset[i * 3], rotationOffset[i * 3 + 1], rotationOffset[i * 3 + 2]);
@@ -668,6 +723,61 @@ void Graphics::ShadowPass()
 	}
 
 	cb_ps_light.ApplyChanges();
+}
+
+
+void Graphics::TransparentPass(const XMMATRIX& cameraVP)
+{
+	XMVECTOR cameraPos = XMLoadFloat3(&camera.GetPositionFloat3());
+	std::vector<IndexDistance> transparentSet;
+
+	for (int i = 0; i < transparentPlanes.size(); ++i)
+	{
+		transparentPlanes[i].SetPosition(planesTranslationOffset[i * 3], planesTranslationOffset[i * 3 + 1], planesTranslationOffset[i * 3 + 2]);
+		transparentPlanes[i].SetRotation(planesRotationOffset[i * 3], planesRotationOffset[i * 3 + 1], planesRotationOffset[i * 3 + 2]);
+		transparentPlanes[i].SetScale(planesScaleOffset[i * 3], planesScaleOffset[i * 3 + 1], planesScaleOffset[i * 3 + 2]);
+		XMVECTOR meshPos = XMLoadFloat3(&transparentPlanes[i].GetPositionFloat3());
+		XMFLOAT3 scaling = transparentPlanes[i].GetScalingFloat3();
+		scaling.y *= 0.5;
+		scaling.z *= 0.5;
+		XMVECTOR corners[8] = {
+			XMVectorSet(-scaling.x, -scaling.y, 0.0f, 0.0f),
+			XMVectorSet(scaling.x, -scaling.y, 0.0f, 0.0f),
+			XMVectorSet(-scaling.x,  scaling.y, 0.0f, 0.0f),
+			XMVectorSet(scaling.x,  scaling.y, 0.0f, 0.0f),
+			XMVectorSet(-scaling.x, -scaling.y,  scaling.z, 0.0f),
+			XMVectorSet(scaling.x, -scaling.y,  scaling.z, 0.0f),
+			XMVectorSet(-scaling.x,  scaling.y,  scaling.z, 0.0f),
+			XMVectorSet(scaling.x,  scaling.y,  scaling.z, 0.0f),
+		};
+
+		float farthestDistance = 0.0f;
+		for (int j = 0; j < 8; ++j)
+		{
+			XMVECTOR diff = XMVectorSubtract(corners[j] + meshPos, cameraPos);
+			float distanceSq = XMVectorGetX(XMVector3LengthSq(diff));
+			if (distanceSq > farthestDistance)
+				farthestDistance = distanceSq;
+		}
+		transparentSet.push_back({ i, farthestDistance });
+	}
+
+	std::sort(transparentSet.begin(), transparentSet.end(),
+		[](const IndexDistance& a, const IndexDistance& b) {
+			return a.farthestDistance > b.farthestDistance;
+		});
+
+
+	for(int i = 0; i < transparentSet.size(); ++i)
+	{
+		int index = transparentSet[i].index;
+		cb_ps_lightModelColor.data.lightColor.x = planesColor[index * 4];
+		cb_ps_lightModelColor.data.lightColor.y = planesColor[index * 4 + 1];
+		cb_ps_lightModelColor.data.lightColor.z = planesColor[index * 4 + 2];
+		cb_ps_lightModelColor.data.lightColor.w = planesColor[index * 4 + 3];
+		cb_ps_lightModelColor.ApplyChanges();
+		transparentPlanes[index].Draw(cameraVP);
+	}
 }
 
 
@@ -689,7 +799,7 @@ void Graphics::MainRenderPass()
 		vp = CalculateSpotlightVP(cb_ps_light.data.lights[3]);
 	{
 		plane.Draw(vp);
-		for (int i = 0; i < numSkulls; ++i)
+		for (int i = 0; i < skulls.size(); ++i)
 		{
 			skulls[i].SetPosition(translationOffset[i * 3], translationOffset[i * 3 + 1], translationOffset[i * 3 + 2]);
 			skulls[i].SetRotation(rotationOffset[i * 3], rotationOffset[i * 3 + 1], rotationOffset[i * 3 + 2]);
@@ -704,13 +814,15 @@ void Graphics::MainRenderPass()
 		{
 			if (light.lightOn && showLights)
 			{
-				cb_ps_lightModelColor.data.lightColor = light.lightColor;
+				cb_ps_lightModelColor.data.lightColor = { light.lightColor.x, light.lightColor.y, light.lightColor.z, 1.0f };
 				cb_ps_lightModelColor.ApplyChanges();
 				if (light.type != LightType::Directional)
 					light.SetScale(lightSphereRadius, lightSphereRadius, lightSphereRadius);
 				light.Draw(vp);
 			}
 		}
+
+		TransparentPass(vp);
 	}
 }
 
@@ -748,15 +860,88 @@ void Graphics::ImGUIPass()
 	ImGui::NewFrame();
 
 	ImGui::Begin("Models");
-	for (int i = 0; i < numSkulls; ++i)
+	for (int i = 0; i < skulls.size(); ++i)
 	{
 		std::string ind = std::to_string(i + 1);
+		std::string textName = "Skull " + ind;
 		std::string coords = "Coords " + ind;
 		std::string rotation = "Rotation " + ind;
 		std::string scale = "Scale " + ind;
+		ImGui::Text(textName.c_str());
 		ImGui::DragFloat3(coords.c_str(), &translationOffset[i * 3], 0.1f, -1000.0f, 1000.0f);
 		ImGui::DragFloat3(rotation.c_str(), &rotationOffset[i * 3], 0.1f, -1000.0f, 1000.0f);
 		ImGui::DragFloat3(scale.c_str(), &scaleOffset[i * 3], 0.1f, -1000.0f, 1000.0f);
+	}
+
+	if (ImGui::Button("Add skull"))
+	{
+		RenderableGameObject skull;
+		if (skull.Initialize("Data/Models/Skull/stylized_dragon_skull.glb", this->device.Get(), this->deviceContext.Get(), cb_vertexShader))
+		{
+			for(int i = 0; i < 3; ++i)
+			{
+				translationOffset.push_back(0.0f);
+				rotationOffset.push_back(0.0f);
+				scaleOffset.push_back(3.0f);
+			}
+			skulls.push_back(skull);
+		}
+	}
+	if (ImGui::Button("Delete last skull") && skulls.size() > 0)
+	{
+		for (int i = 0; i < 3; ++i)
+		{
+			translationOffset.pop_back();
+			rotationOffset.pop_back();
+			scaleOffset.pop_back();
+		}
+		skulls.pop_back();
+	}
+
+	ImGui::End();
+
+	ImGui::Begin("Transparent Planes");
+	for (int i = 0; i < transparentPlanes.size(); ++i)
+	{
+		std::string ind = std::to_string(i + 1);
+		std::string textName = "Plane " + ind;
+		std::string coords = "Coords " + ind;
+		std::string rotation = "Rotation " + ind;
+		std::string scale = "Scale " + ind;
+		std::string color = "Color " + ind;
+		std::string alpha = "Alpha " + ind;
+		ImGui::Text(textName.c_str());
+		ImGui::DragFloat3(coords.c_str(), &planesTranslationOffset[i * 3], 0.1f, -1000.0f, 1000.0f);
+		ImGui::DragFloat3(rotation.c_str(), &planesRotationOffset[i * 3], 0.1f, -1000.0f, 1000.0f);
+		ImGui::DragFloat3(scale.c_str(), &planesScaleOffset[i * 3], 0.1f, -1000.0f, 1000.0f);
+		ImGui::DragFloat3(color.c_str(), &planesColor[i * 4], 0.001f, 0.0f, 1.0f);
+		ImGui::DragFloat(alpha.c_str(), &planesColor[i * 4 + 3], 0.001f, 0.0f, 1.0f);
+	}
+
+	if (ImGui::Button("Add plane"))
+	{
+		std::vector<Texture> emptyTexture;
+		RenderableGameObject transparentPlane;
+		if (transparentPlane.Initialize(planeVertices, planeIndices, emptyTexture, XMMatrixIdentity(), this->device.Get(), this->deviceContext.Get(), cb_vertexShader))
+		{
+			initPlaneParams(0.0f, 0.0f, 0.0f,        //translation
+							0.0f, 0.0f, 0.0f,        //rotation
+							0.5f, 5.0f, 10.0f,       //scaling
+							1.0f, 1.0f, 1.0f, 0.5);  //rgba
+			transparentPlanes.push_back(transparentPlane);
+		}
+	}
+	if (ImGui::Button("Delete last plane") && transparentPlanes.size() > 0)
+	{
+		for(int i = 0; i < 3; ++i)
+		{
+			planesTranslationOffset.pop_back();
+			planesRotationOffset.pop_back();
+			planesScaleOffset.pop_back();
+			planesColor.pop_back();
+		}
+		planesColor.pop_back();
+		transparentPlanes.pop_back();
 	}
 	ImGui::End();
 

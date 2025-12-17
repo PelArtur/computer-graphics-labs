@@ -17,6 +17,7 @@ public:
 	);
 	void Draw(const XMMATRIX& viewProjectionMatrix);
 	void SetInstanceData(const std::vector<InstanceMatrixData>& data, ID3D11Device* device);
+
 protected:
 	Model model;
 	void UpdateMatrix() override;

@@ -13,6 +13,18 @@ const XMFLOAT3& GameObject::GetPositionFloat3() const
 }
 
 
+const XMVECTOR& GameObject::GetScalingVector() const
+{
+	return this->sclVector;
+}
+
+
+const XMFLOAT3& GameObject::GetScalingFloat3() const
+{
+	return this->scl;
+}
+
+
 const XMVECTOR& GameObject::GetRotationVector() const
 {
 	return this->rotVector;

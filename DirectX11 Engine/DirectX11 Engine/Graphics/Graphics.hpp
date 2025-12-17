@@ -29,6 +29,7 @@ public:
     FullscreenQuad fullscreenQuad;
     std::vector<Light> dynamicLights;
     std::vector<RenderableGameObject> skybox;
+    std::vector<RenderableGameObject> transparentPlanes;
 
 private:  
     bool InitializeDirectX(HWND hwnd);  
@@ -38,6 +39,7 @@ private:
     bool InitializeShadowResources();
     void RenderSkybox();
     void MainRenderPass();
+    void TransparentPass(const XMMATRIX &cameraVP);
     void ShadowPass();
     void ToneMappingPass();
     void ImGUIPass();
@@ -109,4 +111,11 @@ private:
 
     const UINT SHADOW_MAP_WIDTH = 2048;
     const UINT SHADOW_MAP_HEIGHT = 2048;
+};
+
+
+struct IndexDistance
+{
+    int index;
+    float farthestDistance;
 };

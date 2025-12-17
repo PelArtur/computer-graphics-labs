@@ -52,8 +52,7 @@ struct CB_PS_LightsData
 
 struct CB_PS_LightColor
 {
-	DirectX::XMFLOAT3 lightColor;
-	float padding;
+	DirectX::XMFLOAT4 lightColor;
 };
 
 
