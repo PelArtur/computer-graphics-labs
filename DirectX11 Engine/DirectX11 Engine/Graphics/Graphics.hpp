@@ -28,6 +28,7 @@ public:
     RenderableGameObject plane;
     FullscreenQuad fullscreenQuad;
     std::vector<Light> dynamicLights;
+    std::vector<RenderableGameObject> skybox;
 
 private:  
     bool InitializeDirectX(HWND hwnd);  
@@ -35,6 +36,7 @@ private:
     bool InitializeScene();
     bool InitializeHDRResources();
     bool InitializeShadowResources();
+    void RenderSkybox();
     void MainRenderPass();
     void ShadowPass();
     void ToneMappingPass();
@@ -75,6 +77,8 @@ private:
     Microsoft::WRL::ComPtr<ID3D11RasterizerState> fullscreenRS;
     Microsoft::WRL::ComPtr<ID3D11RasterizerState> shadowRS;
     Microsoft::WRL::ComPtr<ID3D11BlendState> blendState;
+    D3D11_VIEWPORT mainViewport;
+    D3D11_VIEWPORT shadowViewport;
 
     std::unique_ptr<DirectX::SpriteBatch> spriteBatch;
     std::unique_ptr<DirectX::SpriteFont> spriteFont;
@@ -83,6 +87,11 @@ private:
     Microsoft::WRL::ComPtr<ID3D11SamplerState> shadowSamplerState;
     Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> myTexture;
     Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> myTexture2;
+
+    Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> skyboxTextureSRV;
+    Microsoft::WRL::ComPtr<ID3D11SamplerState> skyboxSamplerState;
+    Microsoft::WRL::ComPtr<ID3D11DepthStencilState> skyboxDepthState;
+    Microsoft::WRL::ComPtr<ID3D11RasterizerState> skyboxRasterizerState;
 
     Microsoft::WRL::ComPtr<ID3D11Texture2D> hdrTexture;
     Microsoft::WRL::ComPtr<ID3D11RenderTargetView> hdrRTV;

@@ -17,6 +17,34 @@ static int shininess = 32;
 static float lightSphereRadius = 0.05f;
 static int cameraMode = 0;
 
+
+std::wstring GetExecutablePath()
+{
+	wchar_t path[MAX_PATH];
+
+	if (GetModuleFileNameW(nullptr, path, MAX_PATH) == 0)
+	{
+		ErrorLogger::Log("Failed to get executable path.");
+		exit(-1);
+	}
+
+	return { path };
+}
+
+
+std::wstring GetExecutableFolder()
+{
+	const std::wstring exePath = GetExecutablePath();
+	const size_t pos = exePath.find_last_of(L"\\/");
+
+	if (pos != std::wstring::npos)
+		return exePath.substr(0, pos + 1);
+
+	ErrorLogger::Log("Failed to get executable folder.");
+	exit(-1);
+}
+
+
 bool Graphics::Initialize(HWND hwnd, int width, int height) 
 {
 	this->windowWidth = width;
@@ -123,9 +151,12 @@ bool Graphics::InitializeDirectX(HWND hwnd)
 		hr = this->device->CreateDepthStencilState(&depthstencildesc, this->depthStencilState.GetAddressOf());
 		COM_ERROR_IF_FAILED(hr, "Failed to create depth stencil state.");
 
-		//Create and set the Viewport
-		CD3D11_VIEWPORT viewport(0.0f, 0.0f, static_cast<float>(this->windowWidth), static_cast<float>(this->windowHeight));;
-		this->deviceContext->RSSetViewports(1, &viewport);
+		//Create the Viewport
+		mainViewport = {};
+		mainViewport.Width = static_cast<float>(windowWidth);
+		mainViewport.Height = static_cast<float>(windowHeight);
+		mainViewport.MinDepth = 0.0f;
+		mainViewport.MaxDepth = 1.0f;
 
 		CD3D11_RASTERIZER_DESC rasterizerDesc(D3D11_DEFAULT);
 		hr = this->device->CreateRasterizerState(&rasterizerDesc, this->rasterizerState.GetAddressOf());
@@ -162,6 +193,42 @@ bool Graphics::InitializeDirectX(HWND hwnd)
 		sampDesc.AddressW = D3D11_TEXTURE_ADDRESS_WRAP;
 		hr = this->device->CreateSamplerState(&sampDesc, this->samplerState.GetAddressOf()); //Create sampler state
 		COM_ERROR_IF_FAILED(hr, "Failed to create sampler state.");
+
+
+		D3D11_SAMPLER_DESC skyboxSamplerDesc = {};
+		skyboxSamplerDesc.Filter = D3D11_FILTER_MIN_MAG_MIP_LINEAR;
+		skyboxSamplerDesc.AddressU = D3D11_TEXTURE_ADDRESS_WRAP;
+		skyboxSamplerDesc.AddressV = D3D11_TEXTURE_ADDRESS_WRAP;
+		skyboxSamplerDesc.AddressW = D3D11_TEXTURE_ADDRESS_WRAP;
+		skyboxSamplerDesc.ComparisonFunc = D3D11_COMPARISON_NEVER;
+		skyboxSamplerDesc.MinLOD = 0;
+		skyboxSamplerDesc.MaxLOD = D3D11_FLOAT32_MAX;
+
+		hr = device->CreateSamplerState(&skyboxSamplerDesc, skyboxSamplerState.GetAddressOf());
+		COM_ERROR_IF_FAILED(hr, "Failed to create skybox sampler state.");
+
+		D3D11_DEPTH_STENCIL_DESC skyboxDepthDesc = {};
+		skyboxDepthDesc.DepthEnable = true;
+		skyboxDepthDesc.DepthWriteMask = D3D11_DEPTH_WRITE_MASK_ZERO;
+		skyboxDepthDesc.DepthFunc = D3D11_COMPARISON_LESS_EQUAL;
+
+		hr = device->CreateDepthStencilState(&skyboxDepthDesc, skyboxDepthState.GetAddressOf());
+		COM_ERROR_IF_FAILED(hr, "Failed to create skybox depth stencil state.");
+
+		D3D11_RASTERIZER_DESC skyboxRasterizerDesc = {};
+		skyboxRasterizerDesc.FillMode = D3D11_FILL_SOLID;
+		skyboxRasterizerDesc.CullMode = D3D11_CULL_NONE; 
+		skyboxRasterizerDesc.FrontCounterClockwise = false;
+		skyboxRasterizerDesc.DepthBias = 0;
+		skyboxRasterizerDesc.DepthBiasClamp = 0.0f;
+		skyboxRasterizerDesc.SlopeScaledDepthBias = 0.0f;
+		skyboxRasterizerDesc.DepthClipEnable = false;
+		skyboxRasterizerDesc.ScissorEnable = false;
+		skyboxRasterizerDesc.MultisampleEnable = false;
+		skyboxRasterizerDesc.AntialiasedLineEnable = false;
+
+		hr = device->CreateRasterizerState(&skyboxRasterizerDesc, skyboxRasterizerState.GetAddressOf());
+		COM_ERROR_IF_FAILED(hr, "Failed to create skybox rasterizer state.");
 	}
 	catch (COMException& exception)
 	{
@@ -169,33 +236,6 @@ bool Graphics::InitializeDirectX(HWND hwnd)
 		return false;
 	}
 	return true;
-}
-
-
-std::wstring GetExecutablePath()
-{
-	wchar_t path[MAX_PATH];
-
-	if (GetModuleFileNameW(nullptr, path, MAX_PATH) == 0)
-	{
-		ErrorLogger::Log("Failed to get executable path.");
-		exit(-1);
-	}
-
-	return { path };
-}
-
-
-std::wstring GetExecutableFolder()
-{
-	const std::wstring exePath = GetExecutablePath();
-	const size_t pos = exePath.find_last_of(L"\\/");
-
-	if (pos != std::wstring::npos)
-		return exePath.substr(0, pos + 1);
-
-	ErrorLogger::Log("Failed to get executable folder.");
-	exit(-1);
 }
 
 
@@ -335,7 +375,7 @@ bool Graphics::InitializeShadowResources()
 		rsDesc.SlopeScaledDepthBias = 1.0f;
 		rsDesc.FillMode = D3D11_FILL_SOLID;
 
-		hr = device->CreateRasterizerState(&rsDesc, this->shadowRS.GetAddressOf());
+		hr = device->CreateRasterizerState(&rsDesc, shadowRS.GetAddressOf());
 		COM_ERROR_IF_FAILED(hr, "Failed to create shadow rasterizer state.");
 
 		D3D11_SAMPLER_DESC samplerDesc = CD3D11_SAMPLER_DESC(CD3D11_DEFAULT());
@@ -349,8 +389,14 @@ bool Graphics::InitializeShadowResources()
 		samplerDesc.BorderColor[2] = 1.0f;
 		samplerDesc.BorderColor[3] = 1.0f;
 
-		hr = device->CreateSamplerState(&samplerDesc, this->shadowSamplerState.GetAddressOf());
+		hr = device->CreateSamplerState(&samplerDesc, shadowSamplerState.GetAddressOf());
 		COM_ERROR_IF_FAILED(hr, "Failed to create shadow sampler state.");
+
+		shadowViewport = {};
+		shadowViewport.Width = SHADOW_MAP_WIDTH;
+		shadowViewport.Height = SHADOW_MAP_HEIGHT;
+		shadowViewport.MinDepth = 0.0f;
+		shadowViewport.MaxDepth = 1.0f;
 		return true;
 	}
 	catch (COMException& exception) {
@@ -407,58 +453,62 @@ bool Graphics::InitializeScene()
 			1.0f / static_cast<float>(windowHeight)
 		};
 
-		std::vector<Vertex> vertices = {
-			Vertex(-0.5f, -0.5f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, -1.0f), 
-			Vertex(-0.5f,  0.5f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, -1.0f),
-			Vertex(0.5f,  0.5f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, -1.0f),
-			Vertex(0.5f, -0.5f, 0.0f, 1.0f, 1.0f, 0.0f, 0.0f, -1.0f),
-
-			Vertex(0.5f, -0.5f, 0.0f, 0.0f, 1.0f, 1.0f, 0.0f, 0.0f),
-			Vertex(0.5f,  0.5f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f),
-			Vertex(0.5f,  0.5f, 1.0f, 1.0f, 0.0f, 1.0f, 0.0f, 0.0f),
-			Vertex(0.5f, -0.5f, 1.0f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f),
-
-			Vertex(0.5f, -0.5f, 1.0f, 0.0f, 1.0f, 0.0f, 0.0f, 1.0f),
-			Vertex(0.5f,  0.5f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f),
-			Vertex(-0.5f, -0.5f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f, 1.0f),
-			Vertex(-0.5f,  0.5f, 1.0f, 1.0f, 0.0f, 0.0f, 0.0f, 1.0f),
-
-			Vertex(-0.5f, -0.5f, 1.0f, 0.0f, 1.0f, -1.0f, 0.0f, 0.0f),
-			Vertex(-0.5f,  0.5f, 1.0f, 0.0f, 0.0f, -1.0f, 0.0f, 0.0f),
-			Vertex(-0.5f, -0.5f, 0.0f, 1.0f, 1.0f, -1.0f, 0.0f, 0.0f),
-			Vertex(-0.5f,  0.5f, 0.0f, 1.0f, 0.0f, -1.0f, 0.0f, 0.0f),
-
-			Vertex(-0.5f,  0.5f, 0.0f, 0.0f, 1.0f, 0.0f, 1.0f, 0.0f),
-			Vertex(-0.5f,  0.5f, 1.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f),
-			Vertex(0.5f,  0.5f, 1.0f, 1.0f, 0.0f, 0.0f, 1.0f, 0.0f),
-			Vertex(0.5f,  0.5f, 0.0f, 1.0f, 1.0f, 0.0f, 1.0f, 0.0f),
-
-			Vertex(-0.5f, -0.5f, 1.0f, 0.0f, 1.0f, 0.0f, -1.0f, 0.0f),
-			Vertex(-0.5f, -0.5f, 0.0f, 0.0f, 0.0f, 0.0f, -1.0f, 0.0f),
-			Vertex(0.5f, -0.5f, 1.0f, 1.0f, 1.0f, 0.0f, -1.0f, 0.0f),
-			Vertex(0.5f, -0.5f, 0.0f, 1.0f, 0.0f, 0.0f, -1.0f, 0.0f)
-		};
-
-		std::vector<DWORD> indices = {
-			0, 1, 2,
-			4, 5, 6,
-			9, 11, 10,
-			13, 15, 14,
-			16, 17, 18,
-			21, 23, 22,
-			0, 2, 3,
-			4, 6, 7,
-			8, 9, 10,
-			12, 13, 14,
-			16, 18, 19,
-			20, 21, 22
-		};
-
 		std::vector<Texture> textures;
 		textures.emplace_back(this->device.Get(), "Data/Textures/grid.jpg", aiTextureType::aiTextureType_DIFFUSE);
 
-		if (!plane.Initialize(vertices, indices, textures, XMMatrixIdentity(), this->device.Get(), this->deviceContext.Get(), cb_vertexShader))
+		if (!plane.Initialize(planeVertices, planeIndices, textures, XMMatrixIdentity(), this->device.Get(), this->deviceContext.Get(), cb_vertexShader))
 			return false;
+
+		{
+			std::vector<std::string> skyboxTexturePaths = {
+				"Data/Textures/skybox/front.jpg",
+				"Data/Textures/skybox/back.jpg",
+				"Data/Textures/skybox/bottom.jpg",
+				"Data/Textures/skybox/top.jpg",
+				"Data/Textures/skybox/right.jpg",
+				"Data/Textures/skybox/left.jpg",
+			};
+			std::vector<DWORD> skyboxIndices = { 0, 1, 2, 2, 1, 3 };
+
+			for(int i = 0; i < 6; ++i)
+			{
+				RenderableGameObject skyboxI;
+				std::vector<Texture> skyboxTextures;
+				skyboxTextures.emplace_back(this->device.Get(), skyboxTexturePaths[i], aiTextureType::aiTextureType_DIFFUSE);
+				std::vector<Vertex> currVertices(skyboxVertices.begin() + i * 4, skyboxVertices.begin() + i * 4 + 4);
+				if (!skyboxI.Initialize(currVertices, skyboxIndices, skyboxTextures, XMMatrixIdentity(), this->device.Get(), this->deviceContext.Get(), cb_vertexShader))
+					return false;
+
+				skyboxI.SetScale(500.0f, 500.0f, 500.0f);
+				if (i == 0)
+				{
+					skyboxI.SetPosition(0.0f, 0.0f, 1000.0f); //0, 0, 100
+				}
+				else if (i == 1)
+				{
+					skyboxI.SetPosition(0.0f, 0.0f, -1000.0f);
+				}
+				else if (i == 2)
+				{
+					skyboxI.SetScale(500.5f, 500.5f, 500.5f);
+					skyboxI.SetPosition(00.0f, -1000.0f, 0.0f);
+				}
+				else if (i == 3)
+				{
+					skyboxI.SetPosition(0.0f, 1000.0f, 0.0f);
+				}
+				else if (i == 4)
+				{
+					skyboxI.SetPosition(1000.0f, 0.0f, 0.0f);
+				}
+				else if (i == 5)
+				{
+					skyboxI.SetPosition(-1000.0f, 0.0f, 0.0f);
+				}
+				skybox.push_back(skyboxI);
+			}
+
+		}
 		{
 			const float radius = 5.0f;
 
@@ -550,43 +600,39 @@ bool Graphics::InitializeScene()
 }
 
 
-DirectX::XMFLOAT3 GetDirectionFromRotation(const DirectX::XMFLOAT3& rotation)
+void Graphics::RenderSkybox()
 {
-	using namespace DirectX;
+	deviceContext->VSSetShader(vertexShader.GetShader(), NULL, 0);
+	deviceContext->PSSetShader(pixelShader_nolight.GetShader(), NULL, 0);
 
-	float cp = cosf(-rotation.x + 3.14f);
-	float sp = sinf(-rotation.x + 3.14f);
-	float cy = cosf(-rotation.y);
-	float sy = sinf(-rotation.y);
+	XMMATRIX viewMatrix = camera.GetViewMatrix();
+	viewMatrix.r[3] = XMVectorSet(0.0f, 0.0f, 0.0f, 1.0f);
 
-	XMFLOAT3 direction;
-	direction.x = sy * cp;
-	direction.y = -sp;
-	direction.z = -cy * cp;
-
-	XMVECTOR dirVec = XMVector3Normalize(XMLoadFloat3(&direction));
-	XMStoreFloat3(&direction, dirVec);
-	return direction;
+	XMMATRIX vp = viewMatrix * camera.GetProjectionMatrix();
+	cb_ps_lightModelColor.data.lightColor = { 1.0f, 1.0f, 1.0f };
+	cb_ps_lightModelColor.ApplyChanges();
+	for (int i = 0; i < 6; ++i)
+		skybox[i].Draw(vp);
 }
 
 
 void Graphics::ShadowPass()
 {
-	this->deviceContext->RSSetState(this->rasterizerState.Get());
-	this->deviceContext->IASetInputLayout(this->vertexShader.GetInputLayout());
-	this->deviceContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY::D3D10_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-	this->deviceContext->OMSetDepthStencilState(this->depthStencilState.Get(), 0);
+	deviceContext->RSSetState(rasterizerState.Get());
+	deviceContext->IASetInputLayout(vertexShader.GetInputLayout());
+	deviceContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY::D3D10_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+	deviceContext->OMSetDepthStencilState(depthStencilState.Get(), 0);
 
-	this->deviceContext->VSSetShader(vertexShader.GetShader(), NULL, 0);
-	this->deviceContext->PSSetShader(nullptr, NULL, 0);
+	deviceContext->VSSetShader(vertexShader.GetShader(), NULL, 0);
+	deviceContext->PSSetShader(nullptr, NULL, 0);
 
-	this->cb_ps_light.data.cameraPos = camera.GetPositionFloat3();
-	this->cb_ps_light.data.numLights = (int)dynamicLights.size();
+	cb_ps_light.data.cameraPos = camera.GetPositionFloat3();
+	cb_ps_light.data.numLights = (int)dynamicLights.size();
 
 	for (size_t i = 0; i < dynamicLights.size() && i < MAX_LIGHTS; ++i)
 	{
 		const Light& currentLight = dynamicLights[i];
-		LightData& targetData = this->cb_ps_light.data.lights[i];
+		LightData& targetData = cb_ps_light.data.lights[i];
 
 		targetData.type = (int)currentLight.type;
 		targetData.color = currentLight.lightColor;
@@ -605,18 +651,12 @@ void Graphics::ShadowPass()
 			continue;
 		targetData.lightWVP = lightWVP;
 
-		D3D11_VIEWPORT shadowViewport = {};
-		shadowViewport.Width = SHADOW_MAP_WIDTH;
-		shadowViewport.Height = SHADOW_MAP_HEIGHT;
-		shadowViewport.MinDepth = 0.0f;
-		shadowViewport.MaxDepth = 1.0f;
-		this->deviceContext->RSSetViewports(1, &shadowViewport);
-
-		this->deviceContext->ClearDepthStencilView(this->shadowDSVs[i].Get(), D3D11_CLEAR_DEPTH, 1.0f, 0);
-		this->deviceContext->OMSetRenderTargets(0, nullptr, this->shadowDSVs[i].Get());
+		deviceContext->RSSetViewports(1, &shadowViewport);
+		deviceContext->ClearDepthStencilView(shadowDSVs[i].Get(), D3D11_CLEAR_DEPTH, 1.0f, 0);
+		deviceContext->OMSetRenderTargets(0, nullptr, shadowDSVs[i].Get());
 
 		{
-			this->plane.Draw(lightWVP);
+			plane.Draw(lightWVP);
 			for (int i = 0; i < numSkulls; ++i)
 			{
 				skulls[i].SetPosition(translationOffset[i * 3], translationOffset[i * 3 + 1], translationOffset[i * 3 + 2]);
@@ -627,43 +667,28 @@ void Graphics::ShadowPass()
 		}
 	}
 
-	this->cb_ps_light.ApplyChanges();
+	cb_ps_light.ApplyChanges();
 }
 
 
 void Graphics::MainRenderPass()
 {
-	this->deviceContext->OMSetRenderTargets(1, this->hdrRTV.GetAddressOf(), this->depthStencilView.Get());
-
-	this->deviceContext->IASetInputLayout(this->vertexShader.GetInputLayout());
-	this->deviceContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY::D3D10_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-	this->deviceContext->RSSetState(this->rasterizerState.Get());
-	this->deviceContext->OMSetDepthStencilState(this->depthStencilState.Get(), 0);
-	this->deviceContext->OMSetBlendState(this->blendState.Get(), NULL, 0xFFFFFFFF);
-	this->deviceContext->PSSetSamplers(0, 1, this->samplerState.GetAddressOf());
-	this->deviceContext->PSSetShaderResources(1, 1, shadowSRVArray.GetAddressOf());
-	this->deviceContext->PSSetSamplers(1, 1, shadowSamplerState.GetAddressOf());
-	this->deviceContext->PSSetConstantBuffers(0, 1, this->cb_ps_light.GetAddressOf());
-	this->deviceContext->VSSetShader(vertexShader.GetShader(), NULL, 0);
+	deviceContext->VSSetShader(vertexShader.GetShader(), NULL, 0);
 	if (useComparisonSampler)
-		this->deviceContext->PSSetShader(pixelShader.GetShader(), NULL, 0);
+		deviceContext->PSSetShader(pixelShader.GetShader(), NULL, 0);
 	else
-		this->deviceContext->PSSetShader(pixelShader_noComparisonSampler.GetShader(), NULL, 0);
+		deviceContext->PSSetShader(pixelShader_noComparisonSampler.GetShader(), NULL, 0);
 
-	D3D11_VIEWPORT mainViewport = {};
-	mainViewport.Width = static_cast<float>(windowWidth);
-	mainViewport.Height = static_cast<float>(windowHeight);
-	mainViewport.MinDepth = 0.0f;
-	mainViewport.MaxDepth = 1.0f;
-	this->deviceContext->RSSetViewports(1, &mainViewport);
 
 	XMMATRIX vp = camera.GetViewMatrix() * camera.GetProjectionMatrix();
 	if (cameraMode == 1)
 		vp = CalculateDirectionalLightVP(cb_ps_light.data.lights[0].direction);
 	else if (cameraMode == 2)
+		vp = CalculateSpotlightVP(cb_ps_light.data.lights[2]);
+	else if (cameraMode == 3)
 		vp = CalculateSpotlightVP(cb_ps_light.data.lights[3]);
 	{
-		this->plane.Draw(vp);
+		plane.Draw(vp);
 		for (int i = 0; i < numSkulls; ++i)
 		{
 			skulls[i].SetPosition(translationOffset[i * 3], translationOffset[i * 3 + 1], translationOffset[i * 3 + 2]);
@@ -673,14 +698,14 @@ void Graphics::MainRenderPass()
 		}
 	}
 	{
-		this->deviceContext->PSSetShader(pixelShader_nolight.GetShader(), NULL, 0);
-		this->deviceContext->PSSetConstantBuffers(1, 1, this->cb_ps_lightModelColor.GetAddressOf());
+		deviceContext->PSSetShader(pixelShader_nolight.GetShader(), NULL, 0);
+		deviceContext->PSSetConstantBuffers(1, 1, cb_ps_lightModelColor.GetAddressOf());
 		for (auto& light : dynamicLights)
 		{
 			if (light.lightOn && showLights)
 			{
-				this->cb_ps_lightModelColor.data.lightColor = light.lightColor;
-				this->cb_ps_lightModelColor.ApplyChanges();
+				cb_ps_lightModelColor.data.lightColor = light.lightColor;
+				cb_ps_lightModelColor.ApplyChanges();
 				if (light.type != LightType::Directional)
 					light.SetScale(lightSphereRadius, lightSphereRadius, lightSphereRadius);
 				light.Draw(vp);
@@ -692,23 +717,23 @@ void Graphics::MainRenderPass()
 
 void Graphics::ToneMappingPass()
 {
-	this->deviceContext->OMSetRenderTargets(1, this->renderTargetView.GetAddressOf(), nullptr);
-	this->deviceContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
-	this->deviceContext->IASetInputLayout(fullscreenVS.GetInputLayout());
+	deviceContext->OMSetRenderTargets(1, renderTargetView.GetAddressOf(), nullptr);
+	deviceContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
+	deviceContext->IASetInputLayout(fullscreenVS.GetInputLayout());
 
-	this->deviceContext->VSSetShader(fullscreenVS.GetShader(), NULL, 0);
-	this->deviceContext->PSSetShader(tonemapPS.GetShader(), NULL, 0);
+	deviceContext->VSSetShader(fullscreenVS.GetShader(), NULL, 0);
+	deviceContext->PSSetShader(tonemapPS.GetShader(), NULL, 0);
 
-	this->deviceContext->PSSetShaderResources(0, 1, this->hdrSRV.GetAddressOf());
-	this->deviceContext->PSSetSamplers(0, 1, this->samplerState.GetAddressOf());
-	this->cbTonemap.ApplyChanges();
-	this->deviceContext->PSSetConstantBuffers(0, 1, this->cbTonemap.GetAddressOf());
+	deviceContext->PSSetShaderResources(0, 1, hdrSRV.GetAddressOf());
+	deviceContext->PSSetSamplers(0, 1, samplerState.GetAddressOf());
+	cbTonemap.ApplyChanges();
+	deviceContext->PSSetConstantBuffers(0, 1, cbTonemap.GetAddressOf());
 
-	deviceContext->RSSetState(this->fullscreenRS.Get());
+	deviceContext->RSSetState(fullscreenRS.Get());
 
 	fullscreenQuad.Draw();
 	ID3D11ShaderResourceView* nullSRV = nullptr;
-	this->deviceContext->PSSetShaderResources(0, 1, &nullSRV);
+	deviceContext->PSSetShaderResources(0, 1, &nullSRV);
 }
 
 
@@ -747,8 +772,9 @@ void Graphics::ImGUIPass()
 	ImGui::Checkbox("Use Comparison Sampler", &useComparisonSampler);
 	const char* cameraSource[] = {
 		"Default",
-		"Directional",
-		"Spot",
+		"1. Directional light",
+		"2. Spot light",
+		"3. Spot light",
 	};
 	ImGui::Combo("Camera source", &cameraMode, cameraSource, IM_ARRAYSIZE(cameraSource));
 	ImGui::End();
@@ -812,15 +838,30 @@ void Graphics::ImGUIPass()
 void Graphics::RenderFrame()
 {
 	float backgroundColor[] = { 0.0f, 0.0f, 0.0f, 1.0f };
-	this->deviceContext->ClearRenderTargetView(this->renderTargetView.Get(), backgroundColor);
-	this->deviceContext->ClearRenderTargetView(this->hdrRTV.Get(), backgroundColor);
-	this->deviceContext->ClearDepthStencilView(this->depthStencilView.Get(), D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, 1.0f, 0);
+	deviceContext->ClearRenderTargetView(renderTargetView.Get(), backgroundColor);
+	deviceContext->ClearRenderTargetView(hdrRTV.Get(), backgroundColor);
+	deviceContext->ClearDepthStencilView(depthStencilView.Get(), D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, 1.0f, 0);
 	
 	ShadowPass();
+
+	deviceContext->OMSetRenderTargets(1, hdrRTV.GetAddressOf(), depthStencilView.Get());
+	deviceContext->IASetInputLayout(vertexShader.GetInputLayout());
+	deviceContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY::D3D10_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+	deviceContext->RSSetState(rasterizerState.Get());
+	deviceContext->OMSetDepthStencilState(depthStencilState.Get(), 0);
+	deviceContext->OMSetBlendState(blendState.Get(), NULL, 0xFFFFFFFF);
+	deviceContext->PSSetSamplers(0, 1, samplerState.GetAddressOf());
+	deviceContext->PSSetShaderResources(1, 1, shadowSRVArray.GetAddressOf());
+	deviceContext->PSSetSamplers(1, 1, shadowSamplerState.GetAddressOf());
+	deviceContext->PSSetConstantBuffers(0, 1, cb_ps_light.GetAddressOf());
+	deviceContext->RSSetViewports(1, &mainViewport);
+
+	RenderSkybox();
 	MainRenderPass();
 	ToneMappingPass();
+
 	ImGUIPass();
-	this->swapchain->Present(0, NULL); //VSYNC ON -- 1, OFF -- 0
+	swapchain->Present(0, NULL); //VSYNC ON -- 1, OFF -- 0
 }
 
 
