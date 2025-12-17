@@ -3,7 +3,7 @@
 - **Author**: Artur Pelcharskyi
 - **OS**: Windows 11
 - **API**: DirectX11
-- **Total Late Days**: 6
+- **Total Late Days**: 39
 
 ## Homework 1: A Funny Cube
 - **Late Days**: 2
@@ -111,7 +111,7 @@ The scene consists of **four objects** (three skulls and one plane) and **four l
 
 ## Homework 4: Shadows and Transparency
 - **Late Days**: 33
-- **Demo**: [YouTube Video]()
+- **Demo**: [YouTube Video](https://youtu.be/8u-lnADDS3o)
 
 ### Main tasks:
 - Directional light shadow with PCF and Comparison Sampler
