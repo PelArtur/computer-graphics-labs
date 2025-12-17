@@ -152,3 +152,16 @@ Performance
 ![img](./images/lab4/performance.png)
 
 As expected, increasing the PCF kernel significantly reduces performance, but rendering with Comparison Sampler not only gives a better visual result, but also runs a little faster. Also, it is interesting to observe that a larger PCF kernel requires a larger shadow bias to avoid self-shadowing.
+
+## Homework 5: PBR & HDR
+- **Late Days**: 5
+- **Demo**: [YouTube Video](https://youtu.be/cbRDif1a7ok)
+
+### Main tasks:
+- HDR tonemapping as a fullscreen pass and Gamma correction
+
+### Aditional tasks:
+- Aditional tonemapping methods
+
+### Tonemapping method comparison (high directional light strength)
+![img](./images/lab5/combined_grid_with_labels.png)
