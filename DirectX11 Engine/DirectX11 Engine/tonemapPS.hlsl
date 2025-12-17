@@ -13,6 +13,22 @@ float3 Reinhard(float3 color)
     return color / (1.0f + color);
 }
 
+
+float3 ReinhardLumaBased(float3 color)
+{
+    float luma = dot(color, float3(0.2126f, 0.7152f, 0.0722f));
+    float reinhardLuma = luma / (1.0f + luma);
+    return color * (reinhardLuma / max(luma, 0.0001f));
+}
+
+
+float3 Filmic(float3 x)
+{
+    x = max(0.0f, x - 0.004f);
+    return (x * (6.2f * x + 0.5f)) / (x * (6.2f * x + 1.7f) + 0.06f);
+}
+
+
 float3 ACES(float3 x) 
 {
     const float a = 2.51f;
@@ -22,6 +38,7 @@ float3 ACES(float3 x)
     const float e = 0.14f;
     return saturate((x * (a * x + b)) / (x * (c * x + d) + e));
 }
+
 
 float3 Uncharted2Tonemap(float3 x) 
 {
@@ -34,6 +51,7 @@ float3 Uncharted2Tonemap(float3 x)
     return ((x * (A * x + C * B) + D * E) / (x * (A * x + B) + D * F)) - E / F;
 }
 
+
 float3 Uncharted2(float3 color) 
 {
     const float W = 11.2f;
@@ -41,6 +59,7 @@ float3 Uncharted2(float3 color)
     float3 whiteScale = 1.0f / Uncharted2Tonemap(W);
     return color * whiteScale;
 }
+
 
 float4 main(float4 position : SV_POSITION, float2 texcoord : TEXCOORD) : SV_Target
 {
@@ -59,6 +78,12 @@ float4 main(float4 position : SV_POSITION, float2 texcoord : TEXCOORD) : SV_Targ
             mapped = ACES(hdrColor);
             break;
         case 2:
+            mapped = ReinhardLumaBased(hdrColor);
+            break;
+        case 3:
+            mapped = Filmic(hdrColor);
+            break;
+        case 4:
             mapped = Uncharted2(hdrColor);
             break;
         default:

@@ -1007,9 +1007,11 @@ void Graphics::ImGUIPass()
 	ImGui::DragFloat("Exposure", &this->cbTonemap.data.exposure, 0.01f, 0.1f, 5.0);
 	ImGui::DragFloat("Gamma", &this->cbTonemap.data.gamma, 0.01f, 1.0f, 3.0f);
 	const char* tonemapOperators[] = {
-		"Reinhard",      // 0
-		"ACES",          // 1  
-		"Uncharted 2",   // 2
+		"Reinhard", 
+		"ACES",
+		"ReinhardLumaBased",
+		"Filmic",
+		"Uncharted 2",
 		"OFF"
 	};
 	ImGui::Combo("Tonemap Operator", &this->cbTonemap.data.tonemapOperator, tonemapOperators, IM_ARRAYSIZE(tonemapOperators));
