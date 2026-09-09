@@ -6,6 +6,8 @@ class GameObject
 public:
 	const XMVECTOR& GetPositionVector() const;
 	const XMFLOAT3& GetPositionFloat3() const;
+	const XMVECTOR& GetScalingVector() const;
+	const XMFLOAT3& GetScalingFloat3() const;
 	const XMVECTOR& GetRotationVector() const;
 	const XMFLOAT3& GetRotationFloat3() const;
 	const XMVECTOR& GetForwardVector(bool omitY = false);

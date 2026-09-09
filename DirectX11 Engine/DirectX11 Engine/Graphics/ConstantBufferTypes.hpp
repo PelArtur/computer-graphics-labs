@@ -30,6 +30,8 @@ struct LightData
 	int shininess;
 	int lightOn;
 	float pad;
+
+	DirectX::XMMATRIX lightWVP;
 };
 
 
@@ -41,13 +43,16 @@ struct CB_PS_LightsData
 	LightData lights[MAX_LIGHTS];
 	int numLights;
 	DirectX::XMFLOAT3 cameraPos;
+	float shadowBias;
+
+	DirectX::XMFLOAT2 texelSize;
+	int pcfKernelSize;
 };
 
 
 struct CB_PS_LightColor
 {
-	DirectX::XMFLOAT3 lightColor;
-	float padding;
+	DirectX::XMFLOAT4 lightColor;
 };
 
 
@@ -91,4 +96,12 @@ struct Warp_pixelShader
 {
 	DirectX::XMFLOAT4 iResolution;
 	float iTime;
+};
+
+
+struct TonemapParams {
+	float exposure = 1.0f;
+	float gamma = 2.2f;
+	int tonemapOperator = 0; // 0: Reinhard, 1: ACES, 2: Uncharted2
+	float padding;
 };

@@ -3,7 +3,7 @@
 - **Author**: Artur Pelcharskyi
 - **OS**: Windows 11
 - **API**: DirectX11
-- **Total Late Days**: 6
+- **Total Late Days**: 44
 
 ## Homework 1: A Funny Cube
 - **Late Days**: 2
@@ -107,3 +107,61 @@ The scene consists of **four objects** (three skulls and one plane) and **four l
 - **Light spheres** have their own pixel shader that ignores illumination from other sources.  
   Each sphere’s color matches the light it represents.  
   The **Spot light** sphere does not visualize the light’s direction.
+
+
+## Homework 4: Shadows and Transparency
+- **Late Days**: 33
+- **Demo**: [YouTube Video](https://youtu.be/8u-lnADDS3o)
+
+### Main tasks:
+- Directional light shadow with PCF and Comparison Sampler
+- Comparison of PCF on/off, Comparison Sampler on/off
+- ImGUI
+- Painter’s Algorithm
+
+### Aditional tasks:
+- Aditional support of spot light shadow
+- Skybox
+- Ability to enable/disable Comparison sampler, change PCF kernel size during the process
+- Switch between camera and lights projection spaces that support shadows
+- Ability to add/delete objects
+
+### PCF and Comparison Sampler
+![img](./images/lab4/combined_grid_with_labels.png)
+
+Performance
+- Screen resolution: **3960x2160 (4k)**
+- GPU: **Nvidia RTX-5080**
+- CPU: **Intel i9-14900k**
+
+| Comparison sampler | PCF kernel size | Average FPS |
+|--------------------|-----------------|-------------|
+|        off         |       1x1       | 2000        |
+|                    |       3x3       | 1773        |
+|                    |       5x5       | 1369        |
+|                    |       7x7       | 1031        |
+|                    |       9x9       | 776         |
+|                    |      11x11      | 588         |
+|        on          |       1x1       | 2021        |
+|                    |       3x3       | 1815        |
+|                    |       5x5       | 1477        |
+|                    |       7x7       | 1084        |
+|                    |       9x9       | 786         |
+|                    |      11x11      | 594         |
+
+![img](./images/lab4/performance.png)
+
+As expected, increasing the PCF kernel significantly reduces performance, but rendering with Comparison Sampler not only gives a better visual result, but also runs a little faster. Also, it is interesting to observe that a larger PCF kernel requires a larger shadow bias to avoid self-shadowing.
+
+## Homework 5: PBR & HDR
+- **Late Days**: 5
+- **Demo**: [YouTube Video](https://youtu.be/cbRDif1a7ok)
+
+### Main tasks:
+- HDR tonemapping as a fullscreen pass and Gamma correction
+
+### Aditional tasks:
+- Aditional tonemapping methods
+
+### Tonemapping method comparison (high directional light strength)
+![img](./images/lab5/combined_grid_with_labels.png)
